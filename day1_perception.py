@@ -5,11 +5,30 @@ import time
 import numpy as np
 from collections import defaultdict, deque
 
+alert_logs = []
+alert_cooldown = defaultdict(int)   # keeps alert alive for some frames
+# ====================== FUNCTION ======================
+def get_student_features(student_history, student_turns):
+    current_students = {}
+    for tid, history in student_history.items():
+        if len(history) == 0:
+            continue
+        latest = history[-1]
+        current_students[tid] = {
+            "id": tid,
+            "box": latest["box"],
+            "head_direction": latest["direction"],
+            "head_turns": student_turns[tid],
+            "shoulder_angle": latest.get("shoulder_angle", 0),
+            "hand_movement": latest.get("hand_movement", 0),
+        }
+    return current_students
+
 # ====================== CONFIG ======================
 VIDEO_PATH = "data/videos/Video1.mkv"
-OUTPUT_PATH = "outputs/day2_output.mp4"
+OUTPUT_PATH = "outputs/day3_output.mp4"
 MODEL_NAME = "yolov8s-pose.pt"
-CONFIDENCE = 0.42
+CONFIDENCE = 0.49
 HISTORY_LENGTH = 60
 # ====================================================
 
@@ -38,8 +57,9 @@ out = cv2.VideoWriter(OUTPUT_PATH, cv2.VideoWriter_fourcc(*"mp4v"), fps, (width,
 student_history = defaultdict(lambda: deque(maxlen=HISTORY_LENGTH))
 student_turns = defaultdict(int)
 last_direction = {}
+active_alerts = {}
 
-print("🚀 Day 2 Improved Pipeline Started...")
+print("🚀 Day 3 Pipeline Started...")
 frame_count = 0
 prev_time = time.time()
 
@@ -76,7 +96,7 @@ while True:
             left_wrist = kpts[9]
             right_wrist = kpts[10]
 
-            # 1. Head Direction
+            # Head Direction
             shoulder_center_x = (left_shoulder[0] + right_shoulder[0]) / 2
             head_offset = nose[0] - shoulder_center_x
 
@@ -87,12 +107,12 @@ while True:
             else:
                 direction = "Center"
 
-            # 2. Body Rotation
+            # Body Rotation
             shoulder_dx = right_shoulder[0] - left_shoulder[0]
             shoulder_dy = right_shoulder[1] - left_shoulder[1]
             shoulder_angle = np.degrees(np.arctan2(shoulder_dy, shoulder_dx))
 
-            # 3. Hand Movement
+            # Hand Movement
             hand_movement = 0
             if track_id in student_history and len(student_history[track_id]) > 5:
                 prev = student_history[track_id][-1]
@@ -143,28 +163,57 @@ while True:
             cv2.putText(annotated_frame, f"Hand Move: {int(hand_movement)}", (x1, y2 + 58),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 150, 0), 2)
 
-    # ========== Prepare clean data ==========
-    current_students = {}
-    for tid, history in student_history.items():
-        if len(history) == 0:
-            continue
-        latest = history[-1]
-        current_students[tid] = {
-            "id": tid,
-            "box": latest["box"],
-            "head_direction": latest["direction"],
-            "head_turns": student_turns[tid],
-            "shoulder_angle": latest.get("shoulder_angle", 0),
-            "hand_movement": latest.get("hand_movement", 0),
-            "history_length": len(history)
-        }
+            # Show Alert
+                        # Show Alert (better visibility)
+            if track_id in active_alerts:
+                # Draw red background rectangle for alert
+                cv2.rectangle(annotated_frame, (x1, y1 - 55), (x1 + 280, y1 - 25), (0, 0, 255), -1)
+                cv2.putText(annotated_frame, active_alerts[track_id],
+                            (x1 + 5, y1 - 35),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
 
-    # Debug print every 15 frames
-    if frame_count % 15 == 0:
-        print(f"\n--- Frame {frame_count} ---")
-        print(f"Active students: {len(student_history)}")
+    # ========== Get features + Alerts ==========
+    current_students = get_student_features(student_history, student_turns)
+
+    # Temporary alerts (Siya will improve later)
+    # ========== Better Alert Logic ==========
+    for sid, data in current_students.items():
+        alert_msg = None
+
+        if data["head_turns"] >= 3:
+            alert_msg = f"Repeated head turning ({data['head_turns']} turns)"
+        elif data["head_direction"] in ["Left", "Right"]:
+            alert_msg = f"Looking {data['head_direction']}"
+        elif data["hand_movement"] > 28:
+            alert_msg = "Unusual hand movement"
+
+        if alert_msg:
+            active_alerts[sid] = alert_msg
+            alert_cooldown[sid] = 45          # keep alert for ~1.5 seconds (45 frames)
+        else:
+            if alert_cooldown[sid] > 0:
+                alert_cooldown[sid] -= 1
+            else:
+                if sid in active_alerts:
+                    del active_alerts[sid]
+
+        # Save alerts to log
+    for sid, msg in active_alerts.items():
+        log_entry = {
+            "frame": frame_count,
+            "student_id": sid,
+            "alert": msg
+        }
+        # Avoid duplicate logs for same alert
+        if not any(l["student_id"] == sid and l["alert"] == msg for l in alert_logs[-10:]):
+            alert_logs.append(log_entry)
+            print(f"🚨 ALERT Logged: Student {sid} → {msg}")
+
+    # Debug print
+    if frame_count % 20 == 0:
+        print(f"\nFrame {frame_count} | Students: {len(current_students)}")
         for sid, data in current_students.items():
-            print(f"  ID {sid}: Head={data['head_direction']}, Turns={data['head_turns']}, HandMove={int(data['hand_movement'])}")
+            print(f"  ID {sid}: {data['head_direction']} | Turns: {data['head_turns']}")
 
     # FPS
     curr_time = time.time()
@@ -174,7 +223,7 @@ while True:
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
     out.write(annotated_frame)
-    cv2.imshow("Day 2 - Improved", annotated_frame)
+    cv2.imshow("Day 3 Pipeline", annotated_frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
