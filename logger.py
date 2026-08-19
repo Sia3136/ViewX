@@ -3,6 +3,8 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+from schemas import BehaviourEvent
+
 
 class EventLogger:
     """
@@ -127,3 +129,12 @@ class EventLogger:
             keypoints_snapshot=keypoints_snapshot,
         )
         return self.log_event(event)
+    def log_behaviour_event(self, event: BehaviourEvent):
+
+        return self.log_observation(
+            student_id=event.student_id,
+            behaviour_type=event.behaviour_type,
+            confidence=event.confidence,
+            explanation=event.explanation,
+            keypoints_snapshot=event.evidence.get("keypoints"),
+        )
