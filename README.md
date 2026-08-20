@@ -1,11 +1,8 @@
-Yes — here’s a **shorter, cleaner README.md version** that still covers what you’ve done, current status, and future implementation without being too huge.
-
-````markdown
 # ExamGuard — AI Monitoring System
 
 ## AI-Assisted Examination Monitoring using Computer Vision
 
-ExamGuard is an AI-assisted examination monitoring system that uses computer vision to detect potentially unusual student behaviours and generate alerts for human review.
+ExamGuard (DrishtiAI) is an AI-assisted examination monitoring system that uses computer vision to detect potentially unusual student behaviours and generate alerts for human review.
 
 > **Note:** ExamGuard does not automatically decide whether a student is cheating. Alerts are indicators that require human verification.
 
@@ -15,369 +12,112 @@ ExamGuard is an AI-assisted examination monitoring system that uses computer vis
 
 The system follows this pipeline:
 
-```text
-CCTV / Video
-     ↓
-Person Detection
-     ↓
-Tracking + Pose Estimation
-     ↓
-Behaviour Analysis
-     ↓
-Alert Generation
-     ↓
-Event Logger
-     ↓
-ExamGuard Dashboard
-````
+```mermaid
+flowchart TD
+    A[CCTV / Video Input] --> B[Person & Object Detection]
+    B --> C[Tracking & Pose Estimation]
+    C --> D[Behaviour Analysis]
+    D --> E[Alert Generation & Rules Engine]
+    E --> F[Event Logger JSON/CSV]
+    F --> G[ExamGuard Dashboard]
+```
 
 ---
 
 ## 📌 Current Development Status
 
-```text
-Day 1  → Foundation + Privacy + Event Logging       ✅
-Day 2  → YOLO + Tracking + Pose Estimation         ✅
-Day 3  → Video + Behaviour Detection + Alerts      ✅
-Day 4  → Streamlit Monitoring Dashboard             ✅
-```
+The current version is a prototype that successfully integrates end-to-end functionality on sample video data.
+
+- **Day 1  → Foundation + Privacy + Event Logging**: ✅ Working
+- **Day 2  → YOLO + Tracking + Pose Estimation**: ✅ Working
+- **Day 3  → Video + Behaviour Detection + Alerts**: ✅ Working
+- **Day 4  → Streamlit Monitoring Dashboard**: ✅ Working
 
 ---
 
-## ✅ Implemented Features
+## ✅ What's Working (Implemented Features)
 
-### Day 1 — Foundation
+### 1. Foundation & Logging
+- Central `EventLogger` storing events in JSON and CSV formats.
+- Timestamped events with anonymous student IDs to respect privacy.
+- Confidence scores and behaviour explanations included in the logs.
 
-* Central `EventLogger`
-* JSON and CSV event storage
-* Timestamped events
-* Anonymous student IDs
-* Confidence and behaviour information
-* Privacy-aware event design
-* Logger and integration testing
+### 2. Computer Vision & Behaviour Analysis
+- **YOLO-based** person detection and multi-object tracking.
+- **Pose Estimation** extracting body keypoints (nose, shoulder, wrist tracking).
+- **Rule-based Behaviour Detection**: 
+  - Head direction (Left / Right / Center) and repeated head turns.
+  - Sideward glances and wrist/hand movement tracking.
+- **Alert Engine**: Rule-based alert generation with cooldowns to prevent spamming.
 
-Example:
-
-```json
-{
-  "student_id": "student_004",
-  "behaviour_type": "repeated_sideward_glance",
-  "confidence": 0.86,
-  "explanation": "Student repeatedly turned their head toward the left."
-}
-```
-
-### Day 2 — Computer Vision
-
-* YOLO pose-based person detection
-* Person tracking
-* Body keypoint extraction
-* Nose, shoulder and wrist tracking
-* Student-specific movement history
-
-### Day 3 — Behaviour Analysis
-
-Current detection includes:
-
-* Head direction: Left / Right / Center
-* Repeated head turns
-* Sideward glances
-* Wrist/hand movement
-* Rule-based alert generation
-* Alert cooldown/active-alert handling
-
-### Day 4 — Dashboard
-
-Streamlit-based **ExamGuard** monitoring interface with:
-
-* Live Feeds
-* Active Alerts
-* Students
-* Analytics
-* Event Log
-* Settings
-* Monitoring controls
-* Lightweight CCTV overlays
-
----
-
-## 🖥️ Dashboard Structure
-
-```text
-ExamGuard
-│
-├── Live Feeds
-├── Students
-├── Analytics
-├── Event Log
-└── Settings
-```
-
-### Live Feeds
-
-Displays the video stream with computer vision results and monitoring controls.
-
-### Active Alerts
-
-Shows recent behavioural alerts without overwhelming the main dashboard.
-
-### Students
-
-Provides anonymous student-level event information.
-
-### Analytics
-
-Displays event counts, confidence information and behaviour distribution.
-
-### Event Log
-
-Provides the complete historical event record.
-
-### Settings
-
-Provides monitoring and interface configuration options.
+### 3. Monitoring Dashboard
+- Streamlit-based **ExamGuard** interface displaying:
+  - **Live Feeds**: Video stream with CV results and lightweight overlays.
+  - **Active Alerts**: Recent behavioural flags.
+  - **Analytics & Students**: Anonymous student-level events and distribution.
+  - **Event Log**: Complete historical record.
 
 ---
 
 ## 🧠 Technology Stack
 
-```text
-Python
-OpenCV
-Ultralytics YOLO
-YOLO Pose
-NumPy
-Pandas
-Streamlit
-JSON / CSV
-```
-
----
-
-## 📁 Project Structure
-
-```text
-DrishtiAI-project/
-│
-├── dashboard.py
-├── live_cctv.py
-├── dayvideo1_perception.py
-│
-├── detector.py
-├── tracker.py
-├── pose.py
-├── behaviour.py
-├── object_detector.py
-├── alert.py
-├── logger.py
-├── privacy.py
-│
-├── pages/
-│   ├── 01_Live_Feeds.py
-│   ├── 02_Students.py
-│   ├── 03_Analytics.py
-│   ├── 04_Event_Log.py
-│   └── 05_Settings.py
-│
-├── data/
-│   └── videos/
-│       └── sample.mp4
-│
-├── logs/
-│   ├── events.json
-│   └── events.csv
-│
-├── outputs/
-├── requirements.txt
-└── README.md
-```
-
----
-
-## ▶️ Running the Project
-
-### 1. Create Virtual Environment
-
-```powershell
-python -m venv .venv
-```
-
-### 2. Activate Environment
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-### 3. Install Dependencies
-
-```powershell
-pip install -r requirements.txt
-```
-
-### 4. Start Dashboard
-
-```powershell
-streamlit run dashboard.py
-```
-
-### 5. Run Computer Vision Pipeline
-
-```powershell
-python dayvideo1_perception.py
-```
-
----
-
-## 🧪 Testing
-
-Run the logger test:
-
-```powershell
-python test_logger.py
-```
-
-Run the integration test:
-
-```powershell
-python test_integration.py
-```
+- **Core & Backend**: Python
+- **Computer Vision**: OpenCV, Ultralytics YOLOv8, YOLO Pose
+- **Data & Processing**: NumPy, Pandas
+- **UI & Dashboard**: Streamlit
+- **Data Storage**: JSON / CSV Logging
 
 ---
 
 ## ⚠️ Current Limitations
 
-The current version is a prototype.
-
-* Behaviour detection is mainly rule-based.
-* Head direction depends on pose geometry.
-* Tracking may be affected by occlusion or crowded scenes.
-* Alert thresholds require calibration.
-* Current testing primarily uses recorded/sample video.
-* Real CCTV/RTSP deployment is not fully implemented yet.
-* AI alerts can produce false positives.
-
----
-
-## 🔮 Future Implementation
-
-### Phase 1 — Real CCTV
-
-Support:
-
-```text
-RTSP
-IP Cameras
-USB Cameras
-Recorded CCTV
-```
-
-### Phase 2 — Multi-Camera Monitoring
-
-Support multiple examination rooms and camera feeds.
-
-### Phase 3 — Improved Behaviour Recognition
-
-Expand detection to:
-
-* Repeated sideward glances
-* Looking behind
-* Excessive head movement
-* Unusual hand movement
-* Posture changes
-* Suspicious interactions
-
-### Phase 4 — Temporal Behaviour Model
-
-Analyse sequences of frames instead of isolated frames to reduce false alerts.
-
-```text
-Multiple Frames
-      ↓
-Temporal Model
-      ↓
-Behaviour Classification
-      ↓
-Alert
-```
-
-### Phase 5 — Better Tracking
-
-Improve:
-
-* Occlusion handling
-* Track recovery
-* Multi-person tracking
-* Identity continuity
-
-### Phase 6 — Alert Prioritisation
-
-Introduce:
-
-```text
-LOW
-MEDIUM
-HIGH
-```
-
-based on behaviour frequency, duration and confidence.
-
-### Phase 7 — Analytics
-
-Future analytics may include:
-
-* Alert timelines
-* Behaviour frequency
-* Camera-wise statistics
-* Heatmaps
-* Session comparisons
-
-### Phase 8 — Privacy & Production
-
-Future improvements:
-
-* Configurable data retention
-* Automatic log deletion
-* Stronger anonymisation
-* Role-based access
-* Encrypted storage
-* Production CCTV deployment
+- **Prototype Stage**: The current version is a prototype.
+- **Rule-based Logic**: Behaviour detection is mainly rule-based.
+- **Pose Dependency**: Head direction relies purely on pose geometry.
+- **Tracking Challenges**: Tracking may be affected by occlusion, lighting, or crowded scenes.
+- **Calibration Needed**: Alert thresholds require further calibration.
+- **Simulated Input**: Current testing primarily uses recorded/sample video.
+- **Real Deployment**: Real CCTV/RTSP deployment is not fully implemented yet.
+- **False Positives**: AI alerts can produce false positives and require human verification.
 
 ---
 
-## 🏗️ Current Architecture
+## 🚧 Roadmap & Left Parts (What's Left)
 
-```text
-Video Input
-    ↓
-YOLO Detection
-    ↓
-Tracking
-    ↓
-Pose Estimation
-    ↓
-Behaviour Analysis
-    ↓
-Alert Engine
-    ↓
-JSON / CSV Logger
-    ↓
-Streamlit Dashboard
-```
+The following items are planned to transition ExamGuard from a prototype to a production-ready system.
 
----
+### Computer Vision & Tracking Improvements
+- **Multi-person Tracking Consistency**: Solve identity switching, track loss, and duplicate IDs. 
+- **Object Detection**: Improve general object detection accuracy.
+- **Crowded Seating Visuals**: Remove box alerts in crowded scenes; use only coloured bounding boxes for cleaner visuals.
+- **External Datasets**: Train/fine-tune on external datasets to handle poor lighting and blind spots.
+- **Blind Spot Handling**: Explicitly alert the system/invigilator when blind spots occur.
+- **Non-verbal Communication**: Detect non-verbal cues and suspicious movements.
 
-## 🎯 Development Goal
+### Alerting & Logic Refinements
+- **False Positive/Negative Correction**: Calibrate thresholds to minimize false alarms.
+- **Confidence & Explainability**: Ensure confidence percentages are logged, then flag them for explainable alerts.
+- **Visual Evidence**: Attach visual evidence, explicit reasons, and correct time zones for every alert.
+- **Invigilator Ruleset**: Distinguish between an invigilator standing or sitting on a desk vs. a student.
+- **Multi-Camera Deduplication**: If the same student is cheating on multiple cameras, trigger **1 unified alert** instead of 2.
+- *(Optional)* **Reinforcement**: Implement a feedback loop for false alarms.
+- *(Optional)* **LLM Integration**: Use LLMs for better explainable framing of the alerts.
 
-The goal is to evolve ExamGuard from a prototype into a reliable, privacy-aware, real-time examination monitoring system that assists invigilators without replacing human judgement.
+### UI Integration (Kavya's Tasks)
+- **Log Integration**: Extract info and degree of head movement, etc., directly from logs and integrate them seamlessly into the Streamlit UI.
+- **Alert Visibility**: Ensure alerts remain visible and clear even after bounding box thinning in the video feed.
+
+### System, Storage & Infrastructure
+- **Real-time Video Ingestion**: Figure out the exact architecture for real-time video ingestion from cameras (RTSP/IP integration).
+- **ID Management on Failure**: Manage Student IDs gracefully post-camera failure (e.g., maintaining position ID or generating next exam student ID).
+- **Storage Output Plan**: Finalize the architecture and planning for scalable video/log storage output.
+- **Network Resilience**: Build robust logs and fallbacks for network failures (needs more thought).
+- **Time Zone Accuracy**: Ensure strict time zone checks are correct for all logs and alerts.
 
 ---
 
 ## ⚖️ Disclaimer
 
-ExamGuard is an experimental AI-assisted monitoring system.
+ExamGuard is an experimental AI-assisted monitoring system. Computer vision results can be affected by lighting, camera position, occlusion, image quality, and student posture.
 
-Computer vision results can be affected by lighting, camera position, occlusion, image quality and student posture.
-
-**AI-generated alerts must be treated as signals for human review and not as definitive evidence of cheating or academic misconduct.**
-
-
+**AI-generated alerts must be treated as signals for human review and not as definitive evidence of cheating or academic misconduct.** For more detailed context, refer to the documentation inside the `info/` directory.

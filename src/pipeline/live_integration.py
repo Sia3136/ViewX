@@ -1,7 +1,7 @@
-from schemas import BehaviourEvent
-from integration import IntegrationEngine
-from logger import EventLogger
-from alert import AlertManager
+from src.utils.schemas import BehaviourEvent
+from src.utils.integration import IntegrationEngine
+from src.utils.logger import EventLogger
+from src.alerts.alert import AlertManager
 
 
 class LiveIntegration:

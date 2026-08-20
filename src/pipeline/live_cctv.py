@@ -5,7 +5,7 @@ import numpy as np
 from collections import defaultdict, deque
 from ultralytics import YOLO
 
-from logger import EventLogger
+from src.utils.logger import EventLogger
 
 
 # ============================================================

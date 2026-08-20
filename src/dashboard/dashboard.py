@@ -1,6 +1,13 @@
-import json
+import sys
 from pathlib import Path
-from live_cctv import LiveCCTVEngine
+
+# Add project root to path so we can resolve fully qualified imports (src.pipeline.live_cctv)
+project_root = Path(__file__).resolve().parents[2]
+if str(project_root) not in sys.path:
+    sys.path.append(str(project_root))
+
+import json
+from src.pipeline.live_cctv import LiveCCTVEngine
 import streamlit as st
 import cv2
 # ============================================================

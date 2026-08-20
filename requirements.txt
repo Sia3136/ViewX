@@ -3,3 +3,4 @@ numpy
 PyYAML
 pandas
 streamlit
+ultralytics

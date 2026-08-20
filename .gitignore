@@ -115,3 +115,8 @@ datasets/
 # Miscellaneous
 # =========================
 .DS_Store
+*.mkv
+*.mp4
+*.csv
+
+
