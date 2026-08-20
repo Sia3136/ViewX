@@ -6,6 +6,7 @@ such as mobile phones and paper/chits (using 'book' as a proxy).
 """
 
 from ultralytics import YOLO
+import math
 
 class ProhibitedObjectDetector:
     def __init__(self, model_path="yolov8s.pt"):
@@ -55,54 +56,88 @@ class ProhibitedObjectDetector:
                     
         return detected_items
 
-import math
+def get_iou(boxA, boxB):
+    xA = max(boxA[0], boxB[0])
+    yA = max(boxA[1], boxB[1])
+    xB = min(boxA[2], boxB[2])
+    yB = min(boxA[3], boxB[3])
+
+    interArea = max(0, xB - xA + 1) * max(0, yB - yA + 1)
+    
+    if interArea == 0:
+        return 0.0
+        
+    boxAArea = (boxA[2] - boxA[0] + 1) * (boxA[3] - boxA[1] + 1)
+    boxBArea = (boxB[2] - boxB[0] + 1) * (boxB[3] - boxB[1] + 1)
+    
+    iou = interArea / float(boxAArea + boxBArea - interArea)
+    return iou
 
 def link_objects_to_students(detected_objects, students_data, max_distance=150.0):
     """
-    Links detected prohibited objects to the nearest student based on bounding box proximity.
-    
-    Args:
-        detected_objects (list): List of detected objects (each is a dict with 'box', 'confidence', 'class_name').
-        students_data (list): List of students (each is a dict with 'id' and 'box').
-        max_distance (float): Maximum allowed pixel distance to associate an object to a student.
-        
-    Returns:
-        list: The detected_objects list augmented with 'assigned_student_id' and 'association_confidence'.
+    Links detected prohibited objects to the nearest student using a tiered approach:
+    1. Bounding-box overlap (Strong)
+    2. Wrist/hand proximity (Medium)
+    3. Center distance (Weak)
     """
     linked_objects = []
     
     for obj in detected_objects:
-        obj_x1, obj_y1, obj_x2, obj_y2 = obj['box']
-        obj_center = ((obj_x1 + obj_x2) / 2.0, (obj_y1 + obj_y2) / 2.0)
+        obj_box = obj['box']
+        obj_center = ((obj_box[0] + obj_box[2]) / 2.0, (obj_box[1] + obj_box[3]) / 2.0)
         
-        nearest_student = None
-        min_distance = float('inf')
+        candidates = []
         
         for student in students_data:
-            sx1, sy1, sx2, sy2 = student['box']
+            stu_box = student['box']
+            iou = get_iou(obj_box, stu_box)
             
-            # Check if object center is inside student's bounding box
-            is_inside = (sx1 <= obj_center[0] <= sx2) and (sy1 <= obj_center[1] <= sy2)
+            is_overlapping = iou > 0
             
-            if is_inside:
-                distance = 0.0
-            else:
-                # Calculate distance from object center to student center
-                stu_center = ((sx1 + sx2) / 2.0, (sy1 + sy2) / 2.0)
-                distance = math.hypot(obj_center[0] - stu_center[0], obj_center[1] - stu_center[1])
+            lw = student.get('left_hand', (0,0))
+            rw = student.get('right_hand', (0,0))
             
-            if distance < min_distance:
-                min_distance = distance
-                nearest_student = student['id']
+            dist_l = math.hypot(obj_center[0] - lw[0], obj_center[1] - lw[1]) if lw != (0,0) else float('inf')
+            dist_r = math.hypot(obj_center[0] - rw[0], obj_center[1] - rw[1]) if rw != (0,0) else float('inf')
+            min_hand_dist = min(dist_l, dist_r)
+            
+            stu_center = ((stu_box[0] + stu_box[2]) / 2.0, (stu_box[1] + stu_box[3]) / 2.0)
+            center_dist = math.hypot(obj_center[0] - stu_center[0], obj_center[1] - stu_center[1])
+            
+            confidence = 0.0
+            
+            if is_overlapping:
+                confidence = 0.9 + (0.1 * iou)
+            elif min_hand_dist < 50.0:
+                confidence = 0.7 + (0.2 * (1 - (min_hand_dist / 50.0)))
+            elif center_dist < max_distance:
+                confidence = 0.4 + (0.2 * (1 - (center_dist / max_distance)))
                 
-        # Assign if within reasonable distance
-        if nearest_student is not None and min_distance <= max_distance:
-            assoc_conf = 1.0 if min_distance == 0 else max(0.0, 1.0 - (min_distance / max_distance))
-            assigned_id = nearest_student
-        else:
-            assoc_conf = 0.0
-            assigned_id = "unassigned"
+            if confidence >= 0.5:
+                candidates.append({
+                    "id": student['id'],
+                    "confidence": confidence
+                })
+                
+        assigned_id = "unassigned"
+        assoc_conf = 0.0
+        
+        if len(candidates) == 1:
+            assigned_id = candidates[0]['id']
+            assoc_conf = candidates[0]['confidence']
+        elif len(candidates) > 1:
+            candidates.sort(key=lambda x: x['confidence'], reverse=True)
             
+            top_cand = candidates[0]
+            runner_up = candidates[1]
+            
+            if (top_cand['confidence'] - runner_up['confidence']) < 0.15:
+                assigned_id = "ambiguous"
+                assoc_conf = 0.0
+            else:
+                assigned_id = top_cand['id']
+                assoc_conf = top_cand['confidence']
+                
         linked_obj = obj.copy()
         linked_obj['assigned_student_id'] = assigned_id
         linked_obj['association_confidence'] = round(assoc_conf, 2)

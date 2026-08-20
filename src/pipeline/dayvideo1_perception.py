@@ -134,6 +134,8 @@ while True:
                 "head_orientation": direction,
                 "head_offset": head_offset,
                 "shoulder_angle": shoulder_angle,
+                "left_shoulder": (int(left_shoulder[0]), int(left_shoulder[1])),
+                "right_shoulder": (int(right_shoulder[0]), int(right_shoulder[1])),
                 "left_hand": (int(left_wrist[0]), int(left_wrist[1])),
                 "right_hand": (int(right_wrist[0]), int(right_wrist[1])),
                 "nose": (int(nose[0]), int(nose[1])),
@@ -176,7 +178,7 @@ while True:
     # Object detection
     obj_results = object_detector.detect_objects(frame, conf_threshold=0.25)
     
-    students_data = [{"id": sid, "box": history[-1]["box"]} for sid, history in student_history.items() if history]
+    students_data = [{"id": sid, "box": history[-1]["box"], "left_hand": history[-1].get("left_hand", (0,0)), "right_hand": history[-1].get("right_hand", (0,0))} for sid, history in student_history.items() if history]
     linked_objects = link_objects_to_students(obj_results, students_data)
 
     # Object alerts

@@ -24,6 +24,11 @@ The system aims to act as an automated AI invigilator, processing video feeds to
   - Body rotation toward neighbours
   - Unusual hand movements
   - Non-verbal communication attempts (hands close to face)
+### Day 4: False Positive Reduction (Completed)
+- Normalized spatial metrics (e.g., pixel distances relative to shoulder width).
+- Contextual modifiers to suppress alerts during normal behaviours (writing, stretching).
+- Advanced temporal logic requiring sustained/repeated events rather than momentary anomalies.
+- Tiered association logic with ambiguity detection for object association.
 - **Object Detection**: Baseline detection for mobile phones and books (as a proxy for paper/chits).
 - **Object-to-Student Association**: Linking detected prohibited items to students using bounding box proximity.
 - **Explainable Alerts**: Formats alerts with confidence scores and human-readable reasoning.
@@ -106,11 +111,11 @@ The system currently processes video frames sequentially:
 
 ## 7. Suspicious Behaviour Rules
 
-- **Repeated Sideward Glances**: Head yaw > 20° for 2+ seconds, repeated 3 times within 10 seconds.
-- **Excessive Head Turning**: 5 changes in head direction within 15 seconds.
-- **Body Rotation**: Shoulder angle > 15° from horizontal.
-- **Unusual Hand Movements**: Rapid keypoint displacement > 40px sustained for 3+ seconds.
-- **Non-Verbal Communication**: Wrists within 30px of nose/ears sustained for 2+ seconds.
+- **Repeated Sideward Glances**: Head yaw > 20° for >1.5 seconds, repeated 3+ times within a 10s rolling window. (Threshold increases if student is looking down).
+- **Excessive Head Turning**: 5+ changes in head direction within 15 seconds.
+- **Body Rotation**: Shoulder angle > 15° from horizontal, sustained continuously for >3s.
+- **Unusual Hand Movements**: Rapid hand displacement > 15% of shoulder width sustained for >3s. (Suppressed if stretching or writing).
+- **Non-Verbal Communication**: Wrists within 50% of shoulder width to nose, sustained for >2s. (Suppressed if stretching).
 *(Initial/calibration values, requires further tuning).*
 
 ## 8. Object Detection

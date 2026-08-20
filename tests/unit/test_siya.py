@@ -40,7 +40,7 @@ def test_pose_extraction():
 def test_behavior_thresholds():
     print("\n--- Testing Behavior Thresholds Loaded ---")
     print(f"Head Yaw Threshold: {BehaviorThresholds.HEAD_YAW_OFFSET_THRESHOLD}")
-    print(f"Hand Movement Threshold: {BehaviorThresholds.HAND_MOVEMENT_THRESHOLD}")
+    print(f"Hand Movement Threshold: {BehaviorThresholds.HAND_MOVEMENT_NORMALIZED_THRESHOLD}")
     print(f"Excessive Turn Window: {BehaviorThresholds.EXCESSIVE_TURN_WINDOW} seconds")
 
 def test_object_detector():

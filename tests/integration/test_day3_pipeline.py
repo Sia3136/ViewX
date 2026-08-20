@@ -20,8 +20,16 @@ def test_day3_alert_generation():
     result = engine.detect_sideward_glances(history)
     assert not result["detected"]
     
-    # Test Body Rotation (threshold > 15)
-    history_rot = [{"shoulder_angle": 20.0}]
+    # Test Body Rotation (threshold > 15, requires sustained 3s)
+    history_rot = []
+    for i in range(100):
+        history_rot.append({
+            "timestamp": i / 30.0,
+            "shoulder_angle": 20.0,
+            "left_shoulder": (100, 100),
+            "right_shoulder": (200, 100),
+            "nose": (150, 50)
+        })
     rot_result = engine.detect_body_rotation(history_rot)
     assert rot_result["detected"]
     
@@ -31,7 +39,7 @@ def test_day3_alert_generation():
         behaviour_type=rot_result["behavior"],
         confidence=rot_result["confidence"],
         explanation=f"Observed: {rot_result['reason']}",
-        timestamp=4.0,
+        timestamp=3.3,
         frame_number=100
     )
     
@@ -39,7 +47,7 @@ def test_day3_alert_generation():
     assert formatted_alert is not None
     assert "Student 3" in alert_manager.format_alert(event)
     assert "Body Rotation" in alert_manager.format_alert(event)
-    assert "Observed: Shoulder angle 20.0° exceeded the allowed threshold of 15.0°." in formatted_alert["explanation"]
+    assert "Observed: Shoulder angle 20.0° exceeded threshold continuously" in formatted_alert["explanation"]
 
 def test_day3_object_association():
     alert_manager = AlertManager()
@@ -49,7 +57,7 @@ def test_day3_object_association():
     ]
     
     students_data = [
-        {"id": 5, "box": [5, 5, 25, 25]}
+        {"id": 5, "box": [5, 5, 25, 25], "left_hand": (10, 10), "right_hand": (20, 20)}
     ]
     
     linked = link_objects_to_students(obj_results, students_data)
@@ -70,7 +78,7 @@ def test_day3_object_association():
     formatted_alert = alert_manager.create_alert(event)
     assert formatted_alert["student_id"] == "5"
     assert formatted_alert["behaviour_type"] == "prohibited_object"
-    assert formatted_alert["confidence"] == 1.0
+    assert formatted_alert["confidence"] > 0.9
     assert "Prohibited cell phone detected near Student 5" in formatted_alert["explanation"]
 
 def test_debouncing_logic():
