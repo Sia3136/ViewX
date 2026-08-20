@@ -1,7 +1,7 @@
-from schemas import BehaviourEvent
-from logger import EventLogger
-from alert import AlertManager
-from integration import IntegrationEngine
+from src.utils.schemas import BehaviourEvent
+from src.utils.logger import EventLogger
+from src.alerts.alert import AlertManager
+from src.utils.integration import IntegrationEngine
 
 
 def main():

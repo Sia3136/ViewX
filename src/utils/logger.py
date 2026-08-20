@@ -3,7 +3,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from schemas import BehaviourEvent
+from src.utils.schemas import BehaviourEvent
 
 
 class EventLogger:

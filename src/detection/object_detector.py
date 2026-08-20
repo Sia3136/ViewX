@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 """
 object_detector.py
 
@@ -110,17 +109,3 @@ def link_objects_to_students(detected_objects, students_data, max_distance=150.0
         linked_objects.append(linked_obj)
         
     return linked_objects
-=======
-class ObjectDetector:
-    """
-    Day 1 interface for prohibited/unwanted object detection.
-
-    Planned objects include mobile phone and paper/chit where feasible.
-    """
-
-    def __init__(self, model_path=None):
-        self.model_path = model_path
-
-    def detect(self, frame):
-        return []
->>>>>>> origin/kc

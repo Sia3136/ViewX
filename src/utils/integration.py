@@ -1,5 +1,5 @@
-from alert import AlertManager
-from logger import EventLogger
+from src.alerts.alert import AlertManager
+from src.utils.logger import EventLogger
 
 
 class IntegrationEngine:

@@ -1,4 +1,4 @@
-from logger import EventLogger
+from src.utils.logger import EventLogger
 
 
 def test_event_creation():

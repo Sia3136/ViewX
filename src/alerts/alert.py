@@ -1,4 +1,4 @@
-from schemas import BehaviourEvent
+from src.utils.schemas import BehaviourEvent
 
 
 class AlertManager:

@@ -1,4 +1,4 @@
-from logger import EventLogger
+from src.utils.logger import EventLogger
 
 logger = EventLogger(
     json_path="logs/events.json",

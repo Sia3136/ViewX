@@ -6,9 +6,9 @@ and pose extraction logic implemented for Siya's Day 1 tasks.
 """
 
 import numpy as np
-from pose import get_head_orientation_and_hand_positions
-from object_detector import ProhibitedObjectDetector
-from behaviour import BehaviorThresholds
+from src.pose.pose import get_head_orientation_and_hand_positions
+from src.detection.object_detector import ProhibitedObjectDetector
+from src.behaviour.behaviour import BehaviorThresholds
 
 def test_pose_extraction():
     print("--- Testing Pose Extraction ---")
@@ -53,7 +53,7 @@ def test_object_detector():
         print(f"Error initializing model: {e}")
 
 def test_facial_features():
-    from pose import get_facial_features
+    from src.pose.pose import get_facial_features
     print("\n--- Testing Facial Features Extraction ---")
     
     # Mock MediaPipe Face Mesh landmarks (468 points, xyz)

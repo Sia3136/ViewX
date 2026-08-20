@@ -3,8 +3,8 @@ import cv2
 import yaml
 from pathlib import Path
 
-from logger import EventLogger
-from video_pipeline import VideoPipeline
+from src.utils.logger import EventLogger
+from src.pipeline.video_pipeline import VideoPipeline
 
 
 def load_config(path="config.yaml"):

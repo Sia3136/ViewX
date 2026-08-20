@@ -4,8 +4,8 @@ test_siya_day2.py
 Tests the rule-based Behavior Engine and the object-to-student linking logic.
 """
 
-from behaviour import BehaviorEngine
-from object_detector import link_objects_to_students
+from src.behaviour.behaviour import BehaviorEngine
+from src.detection.object_detector import link_objects_to_students
 
 def test_behavior_engine():
     print("\n--- Testing Behavior Engine ---")
