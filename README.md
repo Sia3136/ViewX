@@ -30,12 +30,11 @@ The system aims to act as an automated AI invigilator, processing video feeds to
 - **Logging**: Structured JSON and CSV logging for system events.
 - **Dashboard**: A Streamlit dashboard interface for visualizing live alerts and event timelines.
 
-### Planned / Day 3 Work
-- Integrating the rule-based `BehaviourEngine` directly into the live perception pipeline.
-- Integrating the prohibited-object detector into the live pipeline.
-- Generating real-time alerts continuously during video processing.
-- Tuning behaviour thresholds using live videos.
-- Providing visual alerting overlays on the processed video stream based on the `BehaviourEngine` outputs.
+### Day 3 Integration (Complete)
+- **Live Pipeline Integration**: The rule-based `BehaviourEngine` and `ProhibitedObjectDetector` are successfully integrated into the live pipeline (`dayvideo1_perception.py`).
+- **Real-Time Structured Alerts**: Alerts explicitly stating the observed behaviour are generated continuously.
+- **Alert Debouncing**: Prevents duplicate alert spam via a frame-based cooldown.
+- **Note on Thresholds**: Empirical tuning remains pending due to the unavailability of sample video footage; thresholds are currently provisional.
 
 ## 3. Technology Stack
 
@@ -69,7 +68,7 @@ flowchart TD
     L --> M[Monitoring Dashboard]
 ```
 
-*(Note: The live integration of the perception loop with the behaviour engine is planned for Day 3).*
+*(Note: The live integration of the perception loop with the behaviour engine is fully implemented in `dayvideo1_perception.py`)*.
 
 ## 5. Repository Structure
 
@@ -100,7 +99,7 @@ DrishtiAI-project/
 The system currently processes video frames sequentially:
 1. **Video Pipeline**: Captures frames from webcam or video files.
 2. **Perception**: Runs YOLO to detect persons and extract keypoints.
-3. **Behaviour**: (To be integrated) Extracts temporal features and applies thresholds for head yaw, body rotation, and hand movement.
+3. **Behaviour**: Extracts temporal features and applies `BehaviorEngine` detectors for head yaw, body rotation, and hand movement.
 4. **Object Detection**: Identifies phones and books, associating them with the nearest student.
 5. **Alerts**: When rules are triggered, structured alerts are created with confidence scores and reasoning.
 6. **Dashboard**: Reads the logged events and visualizes them for the invigilator.
@@ -188,13 +187,13 @@ Key parameters are stored in `config.yaml` and internal class defaults (e.g. `be
 ## 14. Current Limitations
 
 - **Paper Detection**: Uses `book` class as a proxy since COCO lacks a specific paper/chit class.
-- **Integration**: The active perception loop currently runs a basic alert logic instead of fully utilizing the advanced `BehaviourEngine`. (Slated for Day 3).
-- **Thresholds**: Behaviour thresholds are theoretical and need empirical calibration.
+- **Thresholds**: Behaviour thresholds are theoretical and remain provisional. Empirical calibration is pending actual sample footage.
 - **Occlusion**: Students blocking each other from the camera view may impact pose estimation.
+- **Pipeline Replication**: `allvideo_perception.py` currently retains its older structure pending successful field-testing of `dayvideo1_perception.py`.
 
 ## 15. Future Improvements
 
-- Fully integrating the `BehaviourEngine` into the main video pipeline.
+- Integrating `allvideo_perception.py` to match the Day 3 `dayvideo1_perception.py` architecture.
 - Tuning thresholds on live exam footage.
 - Adding custom models for specific paper/chit detection.
 - Enhancing multi-camera tracking robustly across blind spots.

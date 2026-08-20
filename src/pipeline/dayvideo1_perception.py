@@ -5,24 +5,17 @@ import time
 import numpy as np
 from collections import defaultdict, deque
 
+from src.behaviour.behaviour import BehaviorEngine
+from src.detection.object_detector import ProhibitedObjectDetector, link_objects_to_students
+from src.alerts.alert import AlertManager
+from src.utils.logger import EventLogger
+from src.utils.schemas import BehaviourEvent
+
 alert_logs = []
 alert_cooldown = defaultdict(int)   # keeps alert alive for some frames
 # ====================== FUNCTION ======================
 def get_student_features(student_history, student_turns):
-    current_students = {}
-    for tid, history in student_history.items():
-        if len(history) == 0:
-            continue
-        latest = history[-1]
-        current_students[tid] = {
-            "id": tid,
-            "box": latest["box"],
-            "head_direction": latest["direction"],
-            "head_turns": student_turns[tid],
-            "shoulder_angle": latest.get("shoulder_angle", 0),
-            "hand_movement": latest.get("hand_movement", 0),
-        }
-    return current_students
+    pass # Replaced by direct behavior engine calls
 
 # ====================== CONFIG ======================
 VIDEO_PATH = "data/videos/Video1.mkv"
@@ -54,6 +47,11 @@ fps    = int(cap.get(cv2.CAP_PROP_FPS)) or 25
 
 out = cv2.VideoWriter(OUTPUT_PATH, cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
 
+engine = BehaviorEngine()
+object_detector = ProhibitedObjectDetector()
+alert_manager = AlertManager()
+event_logger = EventLogger()
+
 student_history = defaultdict(lambda: deque(maxlen=HISTORY_LENGTH))
 student_turns = defaultdict(int)
 last_direction = {}
@@ -69,6 +67,7 @@ while True:
         break
 
     frame_count += 1
+    video_timestamp = frame_count / fps
     annotated_frame = frame.copy()
 
     results = model.track(
@@ -131,11 +130,13 @@ while True:
 
             # Save features
             features = {
-                "direction": direction,
+                "timestamp": video_timestamp,
+                "head_orientation": direction,
                 "head_offset": head_offset,
                 "shoulder_angle": shoulder_angle,
-                "left_wrist": left_wrist.copy(),
-                "right_wrist": right_wrist.copy(),
+                "left_hand": (int(left_wrist[0]), int(left_wrist[1])),
+                "right_hand": (int(right_wrist[0]), int(right_wrist[1])),
+                "nose": (int(nose[0]), int(nose[1])),
                 "hand_movement": hand_movement,
                 "box": [x1, y1, x2, y2]
             }
@@ -172,48 +173,83 @@ while True:
                             (x1 + 5, y1 - 35),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
 
-    # ========== Get features + Alerts ==========
-    current_students = get_student_features(student_history, student_turns)
+    # Object detection
+    obj_results = object_detector.detect_objects(frame, conf_threshold=0.25)
+    
+    students_data = [{"id": sid, "box": history[-1]["box"]} for sid, history in student_history.items() if history]
+    linked_objects = link_objects_to_students(obj_results, students_data)
 
-    # Temporary alerts (Siya will improve later)
-    # ========== Better Alert Logic ==========
-    for sid, data in current_students.items():
-        alert_msg = None
+    # Object alerts
+    for obj in linked_objects:
+        obj_x1, obj_y1, obj_x2, obj_y2 = obj['box']
+        cv2.rectangle(annotated_frame, (obj_x1, obj_y1), (obj_x2, obj_y2), (0, 165, 255), 2)
+        cv2.putText(annotated_frame, f"{obj['class_name']}", (obj_x1, obj_y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 165, 255), 2)
+        
+        sid = obj['assigned_student_id']
+        if sid != "unassigned":
+            cooldown_key = (sid, "prohibited_object")
+            if alert_cooldown[cooldown_key] <= 0:
+                event = BehaviourEvent(
+                    student_id=str(sid),
+                    behaviour_type="prohibited_object",
+                    confidence=obj['association_confidence'],
+                    explanation=f"Prohibited {obj['class_name']} detected near Student {sid}.",
+                    timestamp=video_timestamp,
+                    frame_number=frame_count,
+                    evidence={"object": obj['class_name'], "object_conf": obj['confidence']}
+                )
+                formatted_alert = alert_manager.create_alert(event)
+                if formatted_alert:
+                    event_logger.log_event(formatted_alert)
+                    active_alerts[sid] = alert_manager.format_alert(event)
+                    alert_cooldown[cooldown_key] = int(fps * 3)
 
-        if data["head_turns"] >= 3:
-            alert_msg = f"Repeated head turning ({data['head_turns']} turns)"
-        elif data["head_direction"] in ["Left", "Right"]:
-            alert_msg = f"Looking {data['head_direction']}"
-        elif data["hand_movement"] > 28:
-            alert_msg = "Unusual hand movement"
+    # Behaviour alerts
+    for sid, history in student_history.items():
+        if not history:
+            continue
+            
+        history_list = list(history)
+        
+        detectors = [
+            engine.detect_sideward_glances,
+            engine.detect_excessive_head_turns,
+            engine.detect_body_rotation,
+            engine.detect_unusual_hand_movements,
+            engine.detect_nonverbal_communication
+        ]
+        
+        for detector in detectors:
+            result = detector(history_list)
+            if result["detected"]:
+                behavior_type = result["behavior"]
+                cooldown_key = (sid, behavior_type)
+                
+                if alert_cooldown[cooldown_key] <= 0:
+                    event = BehaviourEvent(
+                        student_id=str(sid),
+                        behaviour_type=behavior_type,
+                        confidence=result["confidence"],
+                        explanation=f"Observed: {result['reason']}",
+                        timestamp=video_timestamp,
+                        frame_number=frame_count,
+                        evidence={}
+                    )
+                    formatted_alert = alert_manager.create_alert(event)
+                    if formatted_alert:
+                        event_logger.log_event(formatted_alert)
+                        active_alerts[sid] = alert_manager.format_alert(event)
+                        alert_cooldown[cooldown_key] = int(fps * 3)
 
-        if alert_msg:
-            active_alerts[sid] = alert_msg
-            alert_cooldown[sid] = 45          # keep alert for ~1.5 seconds (45 frames)
-        else:
-            if alert_cooldown[sid] > 0:
-                alert_cooldown[sid] -= 1
-            else:
-                if sid in active_alerts:
-                    del active_alerts[sid]
+        # Manage active_alerts expiration
+        if sid in active_alerts:
+            if all(alert_cooldown[(sid, b)] <= 0 for b in ["repeated_sideward_glance", "excessive_head_turning", "body_rotation", "unusual_hand_movement", "nonverbal_communication", "prohibited_object"]):
+                del active_alerts[sid]
 
-        # Save alerts to log
-    for sid, msg in active_alerts.items():
-        log_entry = {
-            "frame": frame_count,
-            "student_id": sid,
-            "alert": msg
-        }
-        # Avoid duplicate logs for same alert
-        if not any(l["student_id"] == sid and l["alert"] == msg for l in alert_logs[-10:]):
-            alert_logs.append(log_entry)
-            print(f"🚨 ALERT Logged: Student {sid} → {msg}")
-
-    # Debug print
-    if frame_count % 20 == 0:
-        print(f"\nFrame {frame_count} | Students: {len(current_students)}")
-        for sid, data in current_students.items():
-            print(f"  ID {sid}: {data['head_direction']} | Turns: {data['head_turns']}")
+    # Decrease all cooldowns
+    for key in list(alert_cooldown.keys()):
+        if alert_cooldown[key] > 0:
+            alert_cooldown[key] -= 1
 
     # FPS
     curr_time = time.time()
