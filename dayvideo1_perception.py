@@ -5,8 +5,11 @@ import time
 import numpy as np
 from collections import defaultdict, deque
 
+from live_integration import LiveIntegration
+
 alert_logs = []
 alert_cooldown = defaultdict(int)   # keeps alert alive for some frames
+live_integration = LiveIntegration()
 # ====================== FUNCTION ======================
 def get_student_features(student_history, student_turns):
     current_students = {}
@@ -25,7 +28,7 @@ def get_student_features(student_history, student_turns):
     return current_students
 
 # ====================== CONFIG ======================
-VIDEO_PATH = "data/videos/Video1.mkv"
+VIDEO_PATH = 0
 OUTPUT_PATH = "outputs/day3_output.mp4"
 MODEL_NAME = "yolov8s-pose.pt"
 CONFIDENCE = 0.49
@@ -197,17 +200,119 @@ while True:
                 if sid in active_alerts:
                     del active_alerts[sid]
 
-        # Save alerts to log
     for sid, msg in active_alerts.items():
+
         log_entry = {
             "frame": frame_count,
             "student_id": sid,
             "alert": msg
         }
-        # Avoid duplicate logs for same alert
-        if not any(l["student_id"] == sid and l["alert"] == msg for l in alert_logs[-10:]):
+
+        # Avoid duplicate logs for the same alert
+        already_logged = any(
+            l["student_id"] == sid and
+            l["alert"] == msg
+            for l in alert_logs[-10:]
+        )
+
+        if not already_logged:
+
             alert_logs.append(log_entry)
-            print(f"🚨 ALERT Logged: Student {sid} → {msg}")
+
+            # ------------------------------------------
+            # Convert perception alert into BehaviourEvent
+            # ------------------------------------------
+
+            student_data = current_students.get(sid, {})
+
+            head_turns = student_data.get(
+                "head_turns", 0
+            )
+
+            head_direction = student_data.get(
+                "head_direction", "Center"
+            )
+
+            hand_movement = student_data.get(
+                "hand_movement", 0
+            )
+
+            shoulder_angle = student_data.get(
+                "shoulder_angle", 0
+            )
+
+            # ------------------------------------------
+            # Determine behaviour type + confidence
+            # ------------------------------------------
+
+            if head_turns >= 3:
+
+                behaviour_type = "repeated_head_turning"
+
+                confidence = min(
+                    0.60 + (head_turns * 0.05),
+                    0.95
+                )
+
+                explanation = (
+                    f"Student {sid} showed "
+                    f"{head_turns} head-direction changes "
+                    f"during the observed period."
+                )
+
+            elif head_direction in ["Left", "Right"]:
+
+                behaviour_type = "sideward_looking"
+
+                confidence = 0.70
+
+                explanation = (
+                    f"Student {sid} was observed looking "
+                    f"toward the {head_direction.lower()}."
+                )
+
+            elif hand_movement > 28:
+
+                behaviour_type = "unusual_hand_movement"
+
+                confidence = 0.65
+
+                explanation = (
+                    f"Student {sid} showed elevated hand "
+                    f"movement relative to the current frame."
+                )
+
+            else:
+
+                behaviour_type = "behavioural_observation"
+
+                confidence = 0.60
+
+                explanation = msg
+
+            # ------------------------------------------
+            # Send event to Kavya's integration layer
+            # ------------------------------------------
+
+            alert = live_integration.process_alert(
+                student_id=sid,
+                behaviour_type=behaviour_type,
+                confidence=confidence,
+                explanation=explanation,
+                frame_number=frame_count,
+                evidence={
+                    "head_direction": head_direction,
+                    "head_turns": head_turns,
+                    "shoulder_angle": shoulder_angle,
+                    "hand_movement": hand_movement,
+                },
+            )
+
+            print(
+                f"ALERT Logged: Student {sid} → "
+                f"{behaviour_type} "
+                f"({confidence:.0%})"
+            )
 
     # Debug print
     if frame_count % 20 == 0:
