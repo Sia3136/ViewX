@@ -1,204 +1,383 @@
-# DRISHTI AI — Examination Monitoring
+Yes — here’s a **shorter, cleaner README.md version** that still covers what you’ve done, current status, and future implementation without being too huge.
 
-An AI-powered video analytics system designed for real-time detection of examination misconduct. This system monitors seated students using pose estimation and gesture analysis, identifying suspicious behaviours while preserving privacy.
+````markdown
+# ExamGuard — AI Monitoring System
 
-## 1. Project Overview
+## AI-Assisted Examination Monitoring using Computer Vision
 
-Continuous manual observation during physical examinations is difficult and prone to fatigue. The challenge is to develop a system capable of:
-- Monitoring students in real time using pose estimation.
-- Identifying suspicious behaviors without relying on facial recognition.
-- Generating explainable alerts rather than making direct accusations.
-- Remaining robust to different camera angles and lighting conditions.
+ExamGuard is an AI-assisted examination monitoring system that uses computer vision to detect potentially unusual student behaviours and generate alerts for human review.
 
-The system aims to act as an automated AI invigilator, processing video feeds to provide objective evidence of potential misconduct.
+> **Note:** ExamGuard does not automatically decide whether a student is cheating. Alerts are indicators that require human verification.
 
-## 2. Key Features
+---
 
-### Implemented
-- **Student/Person Detection**: Uses YOLOv8 (pose) for baseline person detection.
-- **Tracking**: Basic integration points for multi-object tracking.
-- **Pose Estimation**: Skeleton extraction (YOLO-Pose format) for detecting shoulders, wrists, and nose.
-- **Behaviour Analysis Engine**: Rule-based engine capable of identifying:
-  - Repeated sideward glances
-  - Excessive head turning
-  - Body rotation toward neighbours
-  - Unusual hand movements
-  - Non-verbal communication attempts (hands close to face)
-### Day 4: False Positive Reduction (Completed)
-- Normalized spatial metrics (e.g., pixel distances relative to shoulder width).
-- Contextual modifiers to suppress alerts during normal behaviours (writing, stretching).
-- Advanced temporal logic requiring sustained/repeated events rather than momentary anomalies.
-- Tiered association logic with ambiguity detection for object association.
-- **Object Detection**: Baseline detection for mobile phones and books (as a proxy for paper/chits).
-- **Object-to-Student Association**: Linking detected prohibited items to students using bounding box proximity.
-- **Explainable Alerts**: Formats alerts with confidence scores and human-readable reasoning.
-- **Logging**: Structured JSON and CSV logging for system events.
-- **Dashboard**: A Streamlit dashboard interface for visualizing live alerts and event timelines.
+## 🚀 Project Overview
 
-### Day 3 Integration (Complete)
-- **Live Pipeline Integration**: The rule-based `BehaviourEngine` and `ProhibitedObjectDetector` are successfully integrated into the live pipeline (`dayvideo1_perception.py`).
-- **Real-Time Structured Alerts**: Alerts explicitly stating the observed behaviour are generated continuously.
-- **Alert Debouncing**: Prevents duplicate alert spam via a frame-based cooldown.
-- **Note on Thresholds**: Empirical tuning remains pending due to the unavailability of sample video footage; thresholds are currently provisional.
+The system follows this pipeline:
 
-## 3. Technology Stack
+```text
+CCTV / Video
+     ↓
+Person Detection
+     ↓
+Tracking + Pose Estimation
+     ↓
+Behaviour Analysis
+     ↓
+Alert Generation
+     ↓
+Event Logger
+     ↓
+ExamGuard Dashboard
+````
 
-| Component        | Technology                 |
-| ---------------- | -------------------------- |
-| Language         | Python                     |
-| Object Detection | YOLOv8 / Ultralytics       |
-| Pose Estimation  | YOLO-Pose / MediaPipe      |
-| Computer Vision  | OpenCV                     |
-| Testing          | Pytest                     |
-| Dashboard        | Streamlit, Pandas          |
-| Configuration    | YAML                       |
+---
 
-## 4. Architecture
+## 📌 Current Development Status
 
-```mermaid
-flowchart TD
-    A[Video / Webcam] --> B[Frame Processing]
-    B --> C[Detection & Tracking]
-    C --> D[Pose Extraction]
-    D --> E[Temporal Features]
-    E --> F[Behaviour Engine]
-    
-    B --> H[Object Detection]
-    H --> I[Prohibited Object Detection]
-    I --> J[Object-Student Association]
-    
-    F --> K[Explainable Alert Generation]
-    J --> K
-    K --> L[Event Logger]
-    L --> M[Monitoring Dashboard]
+```text
+Day 1  → Foundation + Privacy + Event Logging       ✅
+Day 2  → YOLO + Tracking + Pose Estimation         ✅
+Day 3  → Video + Behaviour Detection + Alerts      ✅
+Day 4  → Streamlit Monitoring Dashboard             ✅
 ```
 
-*(Note: The live integration of the perception loop with the behaviour engine is fully implemented in `dayvideo1_perception.py`)*.
+---
 
-## 5. Repository Structure
+## ✅ Implemented Features
+
+### Day 1 — Foundation
+
+* Central `EventLogger`
+* JSON and CSV event storage
+* Timestamped events
+* Anonymous student IDs
+* Confidence and behaviour information
+* Privacy-aware event design
+* Logger and integration testing
+
+Example:
+
+```json
+{
+  "student_id": "student_004",
+  "behaviour_type": "repeated_sideward_glance",
+  "confidence": 0.86,
+  "explanation": "Student repeatedly turned their head toward the left."
+}
+```
+
+### Day 2 — Computer Vision
+
+* YOLO pose-based person detection
+* Person tracking
+* Body keypoint extraction
+* Nose, shoulder and wrist tracking
+* Student-specific movement history
+
+### Day 3 — Behaviour Analysis
+
+Current detection includes:
+
+* Head direction: Left / Right / Center
+* Repeated head turns
+* Sideward glances
+* Wrist/hand movement
+* Rule-based alert generation
+* Alert cooldown/active-alert handling
+
+### Day 4 — Dashboard
+
+Streamlit-based **ExamGuard** monitoring interface with:
+
+* Live Feeds
+* Active Alerts
+* Students
+* Analytics
+* Event Log
+* Settings
+* Monitoring controls
+* Lightweight CCTV overlays
+
+---
+
+## 🖥️ Dashboard Structure
+
+```text
+ExamGuard
+│
+├── Live Feeds
+├── Students
+├── Analytics
+├── Event Log
+└── Settings
+```
+
+### Live Feeds
+
+Displays the video stream with computer vision results and monitoring controls.
+
+### Active Alerts
+
+Shows recent behavioural alerts without overwhelming the main dashboard.
+
+### Students
+
+Provides anonymous student-level event information.
+
+### Analytics
+
+Displays event counts, confidence information and behaviour distribution.
+
+### Event Log
+
+Provides the complete historical event record.
+
+### Settings
+
+Provides monitoring and interface configuration options.
+
+---
+
+## 🧠 Technology Stack
+
+```text
+Python
+OpenCV
+Ultralytics YOLO
+YOLO Pose
+NumPy
+Pandas
+Streamlit
+JSON / CSV
+```
+
+---
+
+## 📁 Project Structure
 
 ```text
 DrishtiAI-project/
-├── config.yaml               # Project configuration
-├── main.py                   # Main entry point for foundation video pipeline
-├── requirements.txt          # Python dependencies
-├── docs/
-│   ├── context.md            # Hackathon problem statement and context
-│   └── false_positives_log.md # Log of false positives
-├── src/
-│   ├── alerts/               # Alert generation and formatting
-│   ├── behaviour/            # Rule-based behaviour analysis engine
-│   ├── dashboard/            # Streamlit dashboard interface
-│   ├── detection/            # Object detection and association logic
-│   ├── pipeline/             # Core video processing loops
-│   ├── pose/                 # Pose estimation utility functions
-│   ├── tracking/             # Tracking integration points
-│   └── utils/                # Logging, schemas, and privacy modules
-└── tests/
-    ├── integration/          # Integration tests
-    └── unit/                 # Unit tests for components
+│
+├── dashboard.py
+├── live_cctv.py
+├── dayvideo1_perception.py
+│
+├── detector.py
+├── tracker.py
+├── pose.py
+├── behaviour.py
+├── object_detector.py
+├── alert.py
+├── logger.py
+├── privacy.py
+│
+├── pages/
+│   ├── 01_Live_Feeds.py
+│   ├── 02_Students.py
+│   ├── 03_Analytics.py
+│   ├── 04_Event_Log.py
+│   └── 05_Settings.py
+│
+├── data/
+│   └── videos/
+│       └── sample.mp4
+│
+├── logs/
+│   ├── events.json
+│   └── events.csv
+│
+├── outputs/
+├── requirements.txt
+└── README.md
 ```
 
-## 6. How It Works
+---
 
-The system currently processes video frames sequentially:
-1. **Video Pipeline**: Captures frames from webcam or video files.
-2. **Perception**: Runs YOLO to detect persons and extract keypoints.
-3. **Behaviour**: Extracts temporal features and applies `BehaviorEngine` detectors for head yaw, body rotation, and hand movement.
-4. **Object Detection**: Identifies phones and books, associating them with the nearest student.
-5. **Alerts**: When rules are triggered, structured alerts are created with confidence scores and reasoning.
-6. **Dashboard**: Reads the logged events and visualizes them for the invigilator.
+## ▶️ Running the Project
 
-## 7. Suspicious Behaviour Rules
+### 1. Create Virtual Environment
 
-- **Repeated Sideward Glances**: Head yaw > 20° for >1.5 seconds, repeated 3+ times within a 10s rolling window. (Threshold increases if student is looking down).
-- **Excessive Head Turning**: 5+ changes in head direction within 15 seconds.
-- **Body Rotation**: Shoulder angle > 15° from horizontal, sustained continuously for >3s.
-- **Unusual Hand Movements**: Rapid hand displacement > 15% of shoulder width sustained for >3s. (Suppressed if stretching or writing).
-- **Non-Verbal Communication**: Wrists within 50% of shoulder width to nose, sustained for >2s. (Suppressed if stretching).
-*(Initial/calibration values, requires further tuning).*
-
-## 8. Object Detection
-
-Uses YOLOv8s.pt focusing on classes:
-- `67`: cell phone
-- `73`: book (used as a baseline proxy for paper/chit due to COCO limitations)
-Detected objects are linked to students based on bounding box proximity (default max distance: 150px).
-
-## 9. Alerts
-
-Alerts contain:
-- Anonymized Student ID
-- Behaviour/Object type
-- Confidence score (0.0 to 1.0)
-- Human-readable explanation of why the alert triggered
-- Frame number / Timestamp
-
-## 10. Installation
-
-```bash
-git clone <repository>
-cd <repository>
-
-# Create virtual environment
+```powershell
 python -m venv .venv
-# Activate virtual environment (Windows)
-.venv\Scripts\activate
-# Activate virtual environment (Linux/macOS)
-source .venv/bin/activate
+```
 
+### 2. Activate Environment
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+### 3. Install Dependencies
+
+```powershell
 pip install -r requirements.txt
 ```
 
-## 11. How to Run
+### 4. Start Dashboard
 
-**Run tests:**
-```bash
-python -m pytest tests/
-```
-*(Or run individual modules: `python -m tests.unit.test_siya`)*
-
-**Run foundational video pipeline:**
-```bash
-python main.py --source 0
-```
-*(Uses webcam 0. Alternatively, specify a video path).*
-
-**Run dashboard:**
-```bash
-streamlit run src/dashboard/dashboard.py
+```powershell
+streamlit run dashboard.py
 ```
 
-**Generate mock alerts for testing the dashboard:**
-```bash
-python -m src.alerts.mock_alerts
+### 5. Run Computer Vision Pipeline
+
+```powershell
+python dayvideo1_perception.py
 ```
 
-## 12. Testing
+---
 
-The `tests/` directory contains unit and integration tests covering:
-- Pose extraction logic
-- Object detection and association
-- Behaviour engine rules and thresholds
-- Logger formatting and schema validation
+## 🧪 Testing
 
-## 13. Configuration
+Run the logger test:
 
-Key parameters are stored in `config.yaml` and internal class defaults (e.g. `behaviour.py` thresholds):
-- `video`: Source, max width, display toggles.
-- `models`: Paths to `.pt` weights.
-- `privacy`: Toggles for anonymization and data retention (storing raw keypoints, omitting names).
+```powershell
+python test_logger.py
+```
 
-## 14. Current Limitations
+Run the integration test:
 
-- **Paper Detection**: Uses `book` class as a proxy since COCO lacks a specific paper/chit class.
-- **Thresholds**: Behaviour thresholds are theoretical and remain provisional. Empirical calibration is pending actual sample footage.
-- **Occlusion**: Students blocking each other from the camera view may impact pose estimation.
-- **Pipeline Replication**: `allvideo_perception.py` currently retains its older structure pending successful field-testing of `dayvideo1_perception.py`.
+```powershell
+python test_integration.py
+```
 
-## 15. Future Improvements
+---
 
-- Integrating `allvideo_perception.py` to match the Day 3 `dayvideo1_perception.py` architecture.
-- Tuning thresholds on live exam footage.
-- Adding custom models for specific paper/chit detection.
-- Enhancing multi-camera tracking robustly across blind spots.
+## ⚠️ Current Limitations
+
+The current version is a prototype.
+
+* Behaviour detection is mainly rule-based.
+* Head direction depends on pose geometry.
+* Tracking may be affected by occlusion or crowded scenes.
+* Alert thresholds require calibration.
+* Current testing primarily uses recorded/sample video.
+* Real CCTV/RTSP deployment is not fully implemented yet.
+* AI alerts can produce false positives.
+
+---
+
+## 🔮 Future Implementation
+
+### Phase 1 — Real CCTV
+
+Support:
+
+```text
+RTSP
+IP Cameras
+USB Cameras
+Recorded CCTV
+```
+
+### Phase 2 — Multi-Camera Monitoring
+
+Support multiple examination rooms and camera feeds.
+
+### Phase 3 — Improved Behaviour Recognition
+
+Expand detection to:
+
+* Repeated sideward glances
+* Looking behind
+* Excessive head movement
+* Unusual hand movement
+* Posture changes
+* Suspicious interactions
+
+### Phase 4 — Temporal Behaviour Model
+
+Analyse sequences of frames instead of isolated frames to reduce false alerts.
+
+```text
+Multiple Frames
+      ↓
+Temporal Model
+      ↓
+Behaviour Classification
+      ↓
+Alert
+```
+
+### Phase 5 — Better Tracking
+
+Improve:
+
+* Occlusion handling
+* Track recovery
+* Multi-person tracking
+* Identity continuity
+
+### Phase 6 — Alert Prioritisation
+
+Introduce:
+
+```text
+LOW
+MEDIUM
+HIGH
+```
+
+based on behaviour frequency, duration and confidence.
+
+### Phase 7 — Analytics
+
+Future analytics may include:
+
+* Alert timelines
+* Behaviour frequency
+* Camera-wise statistics
+* Heatmaps
+* Session comparisons
+
+### Phase 8 — Privacy & Production
+
+Future improvements:
+
+* Configurable data retention
+* Automatic log deletion
+* Stronger anonymisation
+* Role-based access
+* Encrypted storage
+* Production CCTV deployment
+
+---
+
+## 🏗️ Current Architecture
+
+```text
+Video Input
+    ↓
+YOLO Detection
+    ↓
+Tracking
+    ↓
+Pose Estimation
+    ↓
+Behaviour Analysis
+    ↓
+Alert Engine
+    ↓
+JSON / CSV Logger
+    ↓
+Streamlit Dashboard
+```
+
+---
+
+## 🎯 Development Goal
+
+The goal is to evolve ExamGuard from a prototype into a reliable, privacy-aware, real-time examination monitoring system that assists invigilators without replacing human judgement.
+
+---
+
+## ⚖️ Disclaimer
+
+ExamGuard is an experimental AI-assisted monitoring system.
+
+Computer vision results can be affected by lighting, camera position, occlusion, image quality and student posture.
+
+**AI-generated alerts must be treated as signals for human review and not as definitive evidence of cheating or academic misconduct.**
+
+

@@ -1,32 +1,48 @@
 import json
 from pathlib import Path
-
-import pandas as pd
+from live_cctv import LiveCCTVEngine
 import streamlit as st
+import cv2
+# ============================================================
+# MONITORING SESSION STATE
+# ============================================================
 
+if "engine" not in st.session_state:
+    st.session_state.engine = None
+
+if "monitoring" not in st.session_state:
+    st.session_state.monitoring = False
+# ============================================================
+# PAGE CONFIG
+# ============================================================
 
 st.set_page_config(
     page_title="DRISHTI AI",
     page_icon="👁️",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
-st.title("DRISHTI AI — Examination Monitoring")
-st.caption(
-    "Behavioural monitoring and explainable alerts — "
-    "not automatic cheating verdicts"
-)
 
-# --------------------------------------------------
-# Configuration
-# --------------------------------------------------
+# ============================================================
+# SESSION STATE
+# ============================================================
+
+if "dark_mode" not in st.session_state:
+    st.session_state.dark_mode = True
+
+
+# ============================================================
+# PATHS
+# ============================================================
 
 LOG_PATH = Path("logs/events.json")
+VIDEO_PATH = Path("data/videos/sample.mp4")
 
 
-# --------------------------------------------------
-# Load events
-# --------------------------------------------------
+# ============================================================
+# LOAD EVENTS
+# ============================================================
 
 def load_events():
     if not LOG_PATH.exists():
@@ -43,281 +59,508 @@ def load_events():
 events = load_events()
 
 
-# --------------------------------------------------
-# Alert severity
-# --------------------------------------------------
-
-def get_alert_level(confidence):
-
-    confidence = float(confidence)
-
-    if confidence >= 0.85:
-        return "HIGH"
-
-    if confidence >= 0.70:
-        return "MEDIUM"
-
-    return "LOW"
-
-
-# --------------------------------------------------
-# Dashboard metrics
-# --------------------------------------------------
-
-col1, col2, col3 = st.columns(3)
-
-col1.metric(
-    "Events Logged",
-    len(events)
-)
+# ============================================================
+# CALCULATE STATISTICS
+# ============================================================
 
 student_ids = sorted(
     {
-        e.get("student_id")
-        for e in events
-        if e.get("student_id")
+        str(event.get("student_id"))
+        for event in events
+        if event.get("student_id")
     }
 )
 
-col2.metric(
-    "Students in Events",
-    len(student_ids)
-)
+high_alerts = 0
+medium_alerts = 0
+low_alerts = 0
 
-avg_conf = (
-    sum(
-        float(e.get("confidence", 0))
-        for e in events
-    ) / len(events)
-    if events
-    else 0
-)
+for event in events:
 
-col3.metric(
-    "Average Confidence",
-    f"{avg_conf:.0%}"
-)
-
-
-st.divider()
-
-
-# --------------------------------------------------
-# Video + system status
-# --------------------------------------------------
-
-left, right = st.columns([2, 1])
-
-with left:
-
-    st.subheader("Live Video")
-
-    st.info(
-        "The real detection, tracking and pose video stream "
-        "will be connected to this panel when the perception "
-        "pipeline is integrated."
+    confidence = float(
+        event.get("confidence", 0)
     )
 
-with right:
+    if confidence >= 0.85:
+        high_alerts += 1
 
-    st.subheader("System Status")
+    elif confidence >= 0.70:
+        medium_alerts += 1
 
-    st.success("Project structure ready")
-    st.success("Event logging ready")
-    st.success("Privacy rules configured")
-    st.success("Explainable alert pipeline ready")
-    st.warning("Perception pipeline not connected yet")
+    else:
+        low_alerts += 1
+
+
+# ============================================================
+# THEME
+# ============================================================
+
+dark_mode = st.session_state.dark_mode
+
+if dark_mode:
+
+    background = "#080c16"
+    card = "#101827"
+    text = "#f4f7ff"
+    muted = "#9aa7bd"
+    border = "#27344b"
+
+else:
+
+    background = "#f4f7fb"
+    card = "#ffffff"
+    text = "#172033"
+    muted = "#65728a"
+    border = "#d7deea"
+
+
+# ============================================================
+# THEME CSS
+#
+# Only CSS is injected here.
+# There are NO visible HTML divs.
+# ============================================================
+
+st.markdown(
+    f"""
+    <style>
+
+    .stApp {{
+        background-color: {background};
+    }}
+
+    [data-testid="stAppViewContainer"] {{
+        background-color: {background};
+    }}
+
+    [data-testid="stHeader"] {{
+        background-color: {background};
+    }}
+
+    section[data-testid="stSidebar"] {{
+        background-color: {card};
+    }}
+
+    .block-container {{
+        padding-top: 1.5rem;
+        padding-bottom: 2rem;
+    }}
+
+    h1, h2, h3, h4, h5, h6 {{
+        color: {text} !important;
+    }}
+
+    p, label {{
+        color: {text};
+    }}
+
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# ============================================================
+# SIDEBAR
+# ============================================================
+
+with st.sidebar:
+
+    st.title("👁️ DRISHTI AI")
+
+    st.caption(
+        "EXAMINATION MONITORING SYSTEM"
+    )
+
+    st.divider()
+
+    st.subheader("Active Session")
+
+    st.write("🏫 Examination Hall")
+    st.caption("CCTV Monitoring Session")
+
+    st.divider()
+
+    st.page_link(
+        "dashboard.py",
+        label="▦ Dashboard",
+    )
+
+    st.page_link(
+        "pages/01_Live_Feeds.py",
+        label="⚠️ Active Alerts",
+    )
+
+    st.divider()
+
+    st.subheader("System")
+
+    st.success("Camera system ready")
+    st.success("Event logger ready")
+    st.success("Privacy mode ON")
+
+    st.divider()
+
+    st.subheader("Appearance")
+
+    theme_toggle = st.toggle(
+        "🌙 Dark Mode",
+        value=st.session_state.dark_mode,
+    )
+
+    if theme_toggle != st.session_state.dark_mode:
+
+        st.session_state.dark_mode = theme_toggle
+
+        st.rerun()
+
+    st.divider()
+
+    st.caption("DRISHTI AI • Hackathon Prototype")
+
+
+# ============================================================
+# HEADER
+# ============================================================
+
+header_left, header_right = st.columns(
+    [4, 1]
+)
+
+with header_left:
+
+    st.title(
+        "Examination Dashboard"
+    )
+
+    st.caption(
+        "Real-time CCTV surveillance, behavioural analysis "
+        "and explainable alerts"
+    )
+
+with header_right:
+
+    st.success("● SYSTEM LIVE")
+
+
+# ============================================================
+# TOP METRICS
+# ============================================================
+
+st.write("")
+
+m1, m2, m3, m4 = st.columns(4)
+
+with m1:
+
+    st.metric(
+        "Students Monitored",
+        len(student_ids),
+    )
+
+with m2:
+
+    st.metric(
+        "High Alerts",
+        high_alerts,
+    )
+
+with m3:
+
+    st.metric(
+        "Medium Alerts",
+        medium_alerts,
+    )
+
+with m4:
+
+    st.metric(
+        "Total Events",
+        len(events),
+    )
 
 
 st.divider()
 
 
-# --------------------------------------------------
-# Active / Recent Alerts
-# --------------------------------------------------
+# ============================================================
+# MAIN DASHBOARD
+# ============================================================
 
-st.subheader("Active / Recent Alerts")
+video_column, alert_column = st.columns(
+    [2.2, 1]
+)
 
 
-if events:
+# ============================================================
+# LIVE DRISHTI PIPELINE
+# ============================================================
 
-    # Display newest events first
-    recent_events = list(reversed(events[-100:]))
+with video_column:
 
-    for event in recent_events:
+    st.subheader("🎥 Live Surveillance Feed")
 
-        confidence = float(
-            event.get("confidence", 0)
+    st.caption(
+        "CAM-01 • CCTV Source • YOLO + Pose + Tracking"
+    )
+
+    start_pipeline = st.button(
+        "▶ Start DRISHTI Monitoring",
+        key="start_pipeline",
+    )
+
+    if start_pipeline:
+
+        engine = LiveCCTVEngine(
+            video_path="data/videos/sample.mp4"
         )
 
-        level = get_alert_level(confidence)
+        frame_placeholder = st.empty()
 
-        student = event.get(
-            "student_id",
-            "unknown"
-        )
+        status_placeholder = st.empty()
 
-        behaviour = event.get(
-            "behaviour_type",
-            "unknown behaviour"
-        )
+        alert_placeholder = st.empty()
 
-        explanation = event.get(
-            "explanation",
-            "No explanation available."
-        )
+        for frame, active_alerts in engine.run():
 
-        timestamp = event.get(
-            "timestamp",
-            "Unknown time"
-        )
+            # --------------------------------------------
+            # Convert OpenCV BGR → RGB
+            # --------------------------------------------
 
-        # ------------------------------
-        # Alert card
-        # ------------------------------
-
-        with st.container(border=True):
-
-            top_col1, top_col2, top_col3 = st.columns(
-                [1, 3, 1]
+            frame_rgb = cv2.cvtColor(
+                frame,
+                cv2.COLOR_BGR2RGB,
             )
 
-            with top_col1:
-                st.write(f"**{level}**")
+            # --------------------------------------------
+            # Display processed CCTV
+            # --------------------------------------------
 
-            with top_col2:
-                st.write(
-                    f"**{student} — "
-                    f"{behaviour.replace('_', ' ').title()}**"
+            frame_placeholder.image(
+                frame_rgb,
+                channels="RGB",
+                use_container_width=True,
+            )
+
+            # --------------------------------------------
+            # LIVE STATUS
+            # --------------------------------------------
+
+            status_placeholder.success(
+                "● DRISHTI AI PIPELINE RUNNING"
+            )
+
+            # --------------------------------------------
+            # LIVE ALERT
+            # --------------------------------------------
+
+            if active_alerts:
+
+                alert_placeholder.error(
+                    f"🚨 ACTIVE ALERTS: "
+                    f"{len(active_alerts)}"
                 )
 
-            with top_col3:
-                st.write(
-                    f"**{confidence:.0%}**"
+            else:
+
+                alert_placeholder.info(
+                    "✓ No active behavioural alerts"
                 )
 
-            st.caption(
-                f"Time: {timestamp}"
+
+# ============================================================
+# ALERT FEED
+# ============================================================
+
+with alert_column:
+
+    st.subheader(
+        "🚨 Alert Feed"
+    )
+
+    if events:
+
+        recent_events = list(
+            reversed(events[-6:])
+        )
+
+        for event in recent_events:
+
+            confidence = float(
+                event.get(
+                    "confidence",
+                    0,
+                )
             )
 
-            st.write(
-                f"**Explanation:** {explanation}"
+            student = event.get(
+                "student_id",
+                "Unknown",
             )
 
-else:
+            behaviour = str(
+                event.get(
+                    "behaviour_type",
+                    "Unknown",
+                )
+            ).replace(
+                "_",
+                " ",
+            ).title()
 
-    st.info(
-        "No events yet. Run mock_alerts.py "
-        "to generate test events."
+            explanation = event.get(
+                "explanation",
+                "No explanation available.",
+            )
+
+            if confidence >= 0.85:
+
+                level = "🔴 HIGH"
+
+            elif confidence >= 0.70:
+
+                level = "🟠 MEDIUM"
+
+            else:
+
+                level = "🟡 LOW"
+
+            with st.container(
+                border=True
+            ):
+
+                st.write(
+                    f"**{level}**"
+                )
+
+                st.write(
+                    f"**Student {student}**"
+                )
+
+                st.write(
+                    f"**{behaviour}**"
+                )
+
+                st.caption(
+                    explanation
+                )
+
+                st.caption(
+                    f"Confidence: {confidence:.0%}"
+                )
+
+    else:
+
+        st.info(
+            "No recent alerts."
+        )
+
+    st.page_link(
+        "pages/01_Live_Feeds.py",
+        label="View all alerts →",
     )
 
 
-# --------------------------------------------------
-# Event table
-# --------------------------------------------------
+# ============================================================
+# SECONDARY INFORMATION
+# ============================================================
 
 st.divider()
 
-st.subheader("Event Timeline")
-
-
-if events:
-
-    rows = []
-
-    for event in recent_events:
-
-        confidence = float(
-            event.get("confidence", 0)
-        )
-
-        rows.append(
-            {
-                "Severity": get_alert_level(confidence),
-                "Timestamp": event.get("timestamp"),
-                "Student": event.get("student_id"),
-                "Behaviour": event.get("behaviour_type"),
-                "Confidence": f"{confidence:.0%}",
-                "Explanation": event.get("explanation"),
-            }
-        )
-
-    st.dataframe(
-        pd.DataFrame(rows),
-        use_container_width=True,
-        hide_index=True,
-    )
-
-else:
-
-    st.info("No events available.")
-
-
-# --------------------------------------------------
-# Student alert summary
-# --------------------------------------------------
-
-st.divider()
-
-st.subheader("Alerts by Student")
-
-
-if events:
-
-    student_counts = {}
-
-    for event in events:
-
-        student = event.get("student_id")
-
-        if student:
-            student_counts[student] = (
-                student_counts.get(student, 0) + 1
-            )
-
-    summary_rows = [
-        {
-            "Student": student,
-            "Alert Count": count,
-        }
-        for student, count
-        in sorted(
-            student_counts.items(),
-            key=lambda x: x[1],
-            reverse=True,
-        )
-    ]
-
-    st.dataframe(
-        pd.DataFrame(summary_rows),
-        use_container_width=True,
-        hide_index=True,
-    )
-
-else:
-
-    st.info("No student events available.")
-
-
-# --------------------------------------------------
-# Privacy
-# --------------------------------------------------
-
-st.divider()
-
-st.subheader("Privacy")
-
-st.write(
-    "The system uses anonymous student IDs and behavioural "
-    "metadata for monitoring. Names, roll numbers, face "
-    "images and face embeddings are not stored."
+st.subheader(
+    "📊 Monitoring Overview"
 )
 
+info1, info2, info3 = st.columns(3)
 
-# --------------------------------------------------
-# Refresh
-# --------------------------------------------------
 
-if st.button("Refresh"):
+with info1:
+
+    with st.container(border=True):
+
+        st.write(
+            "**CCTV Status**"
+        )
+
+        st.success(
+            "Video source available"
+            if VIDEO_PATH.exists()
+            else "Video source unavailable"
+        )
+
+
+with info2:
+
+    with st.container(border=True):
+
+        st.write(
+            "**Behaviour Monitoring**"
+        )
+
+        st.write(
+            "Head direction"
+        )
+
+        st.write(
+            "Hand movement"
+        )
+
+        st.write(
+            "Repeated behaviour"
+        )
+
+
+with info3:
+
+    with st.container(border=True):
+
+        st.write(
+            "**Privacy**"
+        )
+
+        st.success(
+            "Anonymous student IDs"
+        )
+
+        st.caption(
+            "Names, roll numbers, face images "
+            "and face embeddings are not stored."
+        )
+
+
+# ============================================================
+# SYSTEM STATUS
+# ============================================================
+
+st.divider()
+
+st.subheader(
+    "⚙️ System Status"
+)
+
+s1, s2, s3, s4 = st.columns(4)
+
+with s1:
+    st.success("Event Logger")
+
+with s2:
+    st.success("Behaviour Engine")
+
+with s3:
+    st.success("Privacy Layer")
+
+with s4:
+    st.success("Dashboard")
+
+
+# ============================================================
+# REFRESH
+# ============================================================
+
+st.write("")
+
+if st.button(
+    "🔄 Refresh Dashboard"
+):
 
     st.rerun()
