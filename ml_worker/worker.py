@@ -3,6 +3,8 @@ import time
 import numpy as np
 import sys
 import os
+import json
+from datetime import datetime
 from collections import defaultdict, deque
 
 # Add root directory to python path
@@ -12,6 +14,7 @@ from ultralytics import YOLO
 from src.pose.pose import get_head_orientation_and_hand_positions
 from src.behaviour.behaviour import BehaviorEngine
 
+import redis
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from backend.src.models import Event, Student
@@ -20,6 +23,9 @@ from backend.src.models import Event, Student
 DB_URL = "postgresql://examguard_user:supersecretpassword@localhost:5432/examguard"
 engine = create_engine(DB_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Configure Redis Connection
+redis_client = redis.Redis(host='localhost', port=6379, db=0)
 
 MODEL_NAME = "yolov8s-pose.pt"
 VIDEO_PATH = "input videos/04.CCTV Candidate Talking.mkv"
@@ -144,6 +150,15 @@ def run_worker():
                         )
                         db_session.add(db_event)
                         db_session.commit()
+                        
+                        # Publish to Redis for WebSockets
+                        redis_client.publish('alerts', json.dumps({
+                            'student_id': student_str_id,
+                            'behaviour_type': alert['behavior'],
+                            'confidence': alert['confidence'],
+                            'explanation': alert['reason'],
+                            'timestamp': str(datetime.now())
+                        }))
 
         # Print heartbeat every 100 frames
         if frame_count % 100 == 0:
