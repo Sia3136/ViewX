@@ -114,4 +114,7 @@ datasets/
 # =========================
 # Miscellaneous
 # =========================
-.DS_Store
+.DS_Storenode_modules/
+.next/
+.env
+.env.local
