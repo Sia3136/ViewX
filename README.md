@@ -380,7 +380,4 @@ Computer vision results can be affected by lighting, camera position, occlusion,
 
 **AI-generated alerts must be treated as signals for human review and not as definitive evidence of cheating or academic misconduct.**
 
-```
 
-This is much more suitable for your GitHub README: **short enough to read, but detailed enough to show your Day 1–4 work and future roadmap.**
-```
