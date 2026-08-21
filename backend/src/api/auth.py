@@ -45,7 +45,8 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Username already registered")
         
     hashed_password = get_password_hash(user.password)
-    role_val = RoleEnum.ADMIN if user.role == "admin" else RoleEnum.INVIGILATOR
+    # Always force public registration to INVIGILATOR
+    role_val = RoleEnum.INVIGILATOR
     
     new_user = User(username=user.username, password_hash=hashed_password, role=role_val)
     db.add(new_user)
