@@ -10,7 +10,7 @@ ExamGuard (DrishtiAI) is an AI-assisted examination monitoring system that uses 
 
 ## 🚀 Project Overview
 
-The project has transitioned from a monolithic prototype to a modern decoupled architecture. The core machine learning engine runs as a headless background worker, writing detections directly to a PostgreSQL database and broadcasting real-time events through Redis PubSub to a secure FastAPI REST and WebSocket API.
+The project has transitioned from a monolithic prototype to a modern decoupled architecture. The core machine learning engine runs as a headless background worker, writing detections directly to a PostgreSQL database and broadcasting real-time events through Redis PubSub to a secure FastAPI REST and WebSocket API. Clients interact with the system via a modern Next.js single-page application.
 
 ```mermaid
 flowchart TD
@@ -22,19 +22,19 @@ flowchart TD
     FastAPI[FastAPI API Server] -->|SQLAlchemy| DB
     Redis -->|Subscribe 'alerts'| FastAPI
     
-    FastAPI -->|WebSockets| WSClient[Dashboard Clients]
-    FastAPI -->|HTTP REST| RESTClient[HTTP Clients]
+    FastAPI -->|WebSockets| NextJS[Next.js Frontend Clients]
+    FastAPI -->|HTTP REST| NextJS
 ```
 
 ---
 
 ## 📌 Current Development Status
 
-The codebase is split into three main parts:
+The codebase consists of the following components:
 - **`ml_worker/`**: Headless Python background daemon running YOLOv8 tracking + custom pose-based spatial heuristics.
 - **`backend/`**: FastAPI REST API + WebSocket broadcaster + JWT Authentication.
+- **`frontend/`**: Modern Next.js (App Router, Tailwind CSS v4, Shadcn UI) web application dashboard.
 - **`src/dashboard/`**: Streamlit dashboard prototype (legacy monolithic visualizer).
-- **`frontend/`**: Planned Next.js client application (currently empty).
 
 ---
 
@@ -60,7 +60,16 @@ The codebase is split into three main parts:
 * **Dynamic Settings**: Routes to query and patch thresholds in the DB (`GET /api/settings`, `PATCH /api/settings`).
 * **Real-time Broadcaster**: WebSocket connection (`WS /api/ws/alerts`) subscribing to Redis and broadcasting instantly to clients.
 
-### 3. Tests
+### 3. Next.js Web Client Scaffold
+* **Application Shell**: Fully responsive sidebar navigation and user account status bar.
+* **Axios API Client**: Handles session configuration, header injection (`Bearer <token>`), and global 401 response interceptors.
+* **Global Auth Provider**: Custom React Context managing session states, local storage token caching, and user routing security.
+* **Real-Time Live Feed Alerts**: Active alerts page streaming raw events instantly via WebSocket without polling.
+* **Scalable Data Views**: Paginated Historical Event Log table and Client-Side Aggregated metrics views.
+* **Settings Portal**: Dynamic CRUD form interacting directly with backend dynamic settings, while gracefully denoting legacy settings gaps.
+* **Failure Tolerance**: Robust loading states (skeletons), error boundaries (connection fallback details), and empty states across all pages.
+
+### 4. Tests
 * Comprehensive automated integration and unit tests validating behavioral heuristics, pipeline logic, and database integrations.
 
 ---
@@ -85,40 +94,17 @@ The codebase is split into three main parts:
 * **PubSub:** Redis (7+)
 
 ### Frontend (Dashboard)
-* **Prototype UI:** Streamlit (Legacy prototype)
-* **Target UI:** Next.js / React (Planned)
+* **Framework:** Next.js (16+ App Router, React 19)
+* **Styling:** Tailwind CSS (v4)
+* **Component Library:** Shadcn UI (Zinc theme)
+* **Icons:** Lucide React
+* **State & Networking:** React Context + Axios
 
 ### Development & Orchestration
 * **Virtual Environment:** Python venv
 * **Containerization:** Docker Compose
 * **Testing:** Pytest
-
----
-
-## 📐 Architecture
-
-ExamGuard uses a microservice-style decoupled architecture:
-1. **The ML Worker** reads from a camera feed/webcam, runs YOLOv8 model tracking, extracts coordinate arrays, evaluates keypoint sequences on temporal heuristics, and writes detections to the PostgreSQL database. It then publishes a JSON event payload to Redis.
-2. **The FastAPI Backend** acts as the gateway. It serves data to frontends, validates user privileges via JWT, manages the threshold settings table, and maintains a WebSocket `ConnectionManager` subscribing to Redis to push live events to active clients.
-3. **The Database** stores relational state across 4 main tables (`users`, `students`, `events`, `settings`).
-
-### Request & Alert Lifecycle
-
-```text
-  [Camera Frame Input] 
-           ↓
-    YOLOv8 Pose Track 
-           ↓
-Behavior Heuristics Triggered
-           ↓
-  PostgreSQL Event Saved   ───>   Published to Redis Channel 'alerts'
-                                                 ↓
-                                      FastAPI Redis Listener
-                                                 ↓
-                                   WebSocket Broadcast Alert
-                                                 ↓
-                                       Frontend UI toast
-```
+* **Package Manager:** npm
 
 ---
 
@@ -150,7 +136,22 @@ DrishtiAI-project/
 │   │   ├── detection/
 │   │   └── pose/
 │   └── worker.py             # Headless pipeline entry point
-├── frontend/                 # Next.js web application (empty, Planned)
+├── frontend/                 # Next.js web application
+│   ├── src/
+│   │   ├── app/              # App Router pages and layouts
+│   │   │   ├── dashboard/    # Sub-routes: alerts, analytics, events, settings, students
+│   │   │   ├── sign-in/      # Login view
+│   │   │   ├── globals.css   # Tailwind configurations
+│   │   │   ├── layout.tsx
+│   │   │   └── page.tsx      # Public landing page
+│   │   ├── components/       # Custom React and UI elements
+│   │   │   ├── layout/       # Sidebar, Navbar
+│   │   │   └── ui/           # Shadcn base elements
+│   │   ├── context/          # React AuthContext Provider
+│   │   └── lib/              # api.ts client & utility directories
+│   ├── components.json       # Shadcn CLI config
+│   ├── package.json          # Node dependencies
+│   └── .env.example          # Environment variables template
 ├── tests/                    # Pytest test suites (Unit & Integration)
 │   ├── integration/
 │   │   └── demo_simulator.py
@@ -170,6 +171,7 @@ DrishtiAI-project/
 
 ### Prerequisites
 * **Python** 3.10 to 3.14 installed.
+* **Node.js** v18+ and **npm** installed.
 * **Docker & Docker Compose** installed.
 
 ### 1. Spin up Databases
@@ -215,7 +217,16 @@ python ml_worker/worker.py
 ```
 *(By default, it will download YOLO weights if not present, process `input videos/04.CCTV Candidate Talking.mkv`, write events to PostgreSQL, and publish them to Redis).*
 
-### 6. Run the Streamlit Visualizer (Legacy)
+### 6. Run the Next.js Frontend
+From the root directory, navigate to `frontend`, install packages, and boot the web dev server:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+The client app will launch at: `http://localhost:3000`.
+
+### 7. Run the Streamlit Visualizer (Legacy)
 ```bash
 streamlit run src/dashboard/dashboard.py
 ```
@@ -266,14 +277,21 @@ SQLAlchemy Models are configured inside `/backend/src/models.py`.
 
 ## 🔒 Environment Variables
 
-Currently, database URLs and authorization configurations are set using defaults in python code for ease of setup during hackathons. To override them in production, specify the following variables:
+Database URLs and authorization configurations are configured via environment variables.
 
+### Backend (`/backend/`)
 | Variable | Component | Required | Purpose | Default |
 | --- | --- | --- | --- | --- |
 | `DATABASE_URL` | Backend / Worker | Optional | Target Postgres connection string | `postgresql://examguard_user:supersecretpassword@localhost:5432/examguard` |
 | `REDIS_URL` | Backend | Optional | Target Redis connection string | `redis://localhost:6379` |
 | `SECRET_KEY` | Backend | Optional | Token security algorithm secret key | `dummy_secret_for_hackathon` |
 | `ALGORITHM` | Backend | Optional | JWT sign algorithm | `HS256` |
+
+### Frontend (`/frontend/`)
+Create a `.env.local` file inside the `frontend/` directory to configure variables:
+| Variable | Component | Required | Purpose | Default |
+| --- | --- | --- | --- | --- |
+| `NEXT_PUBLIC_API_URL` | Frontend | Yes | API Gateway Host URL | `http://localhost:8000` |
 
 ---
 
@@ -305,22 +323,14 @@ The local environment services are specified in `/docker-compose.yml`:
 
 ---
 
-## 🚀 Deployment (Planned)
-
-### Frontend Deployment
-* Target: Vercel (Next.js Application)
-* Environment: `NEXT_PUBLIC_API_URL` pointing to backend host.
-
-### Backend Deployment
-* Target: Docker container host (Railway / Render / AWS ECS)
-* Config: Set environment `DATABASE_URL` pointing to production DB instance and `REDIS_URL` pointing to production Redis.
-
-### Database Deployment
-* Target: Neon / AWS RDS PostgreSQL
-
----
-
 ## 🔄 Recent Changes
+
+### Next.js Frontend Scaffold
+* Configured Next.js 16 + React 19 App Router setup using the latest npm CLI.
+* Integrates custom Tailwind CSS v4 variables with a dark-zinc theme.
+* Configured core Shadcn UI layout components (Button, Input, Card, Table, Sonner notifications, Skeletons).
+* Created a client side authentication gate leveraging global React Context and Axios interceptors.
+* Developed 6 distinct subviews mimicking legacy Streamlit capabilities while calling live HTTP REST and WebSocket APIs.
 
 ### Backend Scaffolding
 * Created FastAPI entry point (`backend/main.py`) and routed modular api subdirectories.
