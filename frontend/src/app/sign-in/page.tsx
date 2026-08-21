@@ -22,6 +22,16 @@ export default function SignIn() {
     setError('');
 
     try {
+      // TEMPORARY LOCAL DEVELOPMENT LOGIN BYPASS.
+      // REMOVE when proper authentication/signup flow is restored.
+      if (username === "admin" && password === "1234") {
+        const dummyPayload = btoa(JSON.stringify({ sub: 'admin', role: 'admin' }));
+        const dummyToken = `dummy.${dummyPayload}.dummy`;
+        login(dummyToken);
+        setIsLoading(false);
+        return;
+      }
+
       const formData = new URLSearchParams();
       formData.append('username', username);
       formData.append('password', password);
@@ -80,10 +90,16 @@ export default function SignIn() {
               />
             </div>
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex flex-col space-y-4">
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? 'Signing in...' : 'Sign in'}
             </Button>
+            <div className="text-sm text-center text-zinc-400">
+              Need an account?{' '}
+              <a href="/sign-up" className="text-emerald-500 hover:underline">
+                Sign up
+              </a>
+            </div>
           </CardFooter>
         </form>
       </Card>

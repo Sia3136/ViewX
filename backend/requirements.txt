@@ -7,3 +7,6 @@ passlib[bcrypt]
 pyjwt
 pydantic
 pydantic-settings
+python-multipart
+redis
+websockets

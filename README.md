@@ -1,355 +1,384 @@
-# ExamGuard — AI Monitoring System
+# Drishti AI (ExamGuard) — AI Examination Monitoring System
 
-## AI-Assisted Examination Monitoring using Computer Vision
+## 1. Project Overview
+Drishti AI (ExamGuard) is an AI-assisted examination monitoring system designed to detect potentially suspicious student behaviors during exams. It uses computer vision to track and analyze student poses and head orientations, generating explainable alerts for human invigilators to review.
 
-ExamGuard (DrishtiAI) is an AI-assisted examination monitoring system that uses computer vision to detect potentially suspicious student behaviours and generate explainable alerts for human invigilator review.
-
-> **Note:** ExamGuard does not automatically decide whether a student is cheating. Alerts are indicators that require human verification.
+**Note:** Drishti AI does not autonomously decide if a student is cheating. The generated alerts serve as signals that require human verification. This project is intended to assist invigilators, not replace them.
 
 ---
 
-## 🚀 Project Overview
-
-The project has transitioned from a monolithic prototype to a modern decoupled architecture. The core machine learning engine runs as a headless background worker, writing detections directly to a PostgreSQL database and broadcasting real-time events through Redis PubSub to a secure FastAPI REST and WebSocket API. Clients interact with the system via a modern Next.js single-page application.
+## 2. Docker Architecture
+The system employs a decoupled architecture. The web application infrastructure is fully Dockerized for reproducible local development, while the ML Worker remains natively on the host machine to avoid introducing CUDA/GPU/container complexities.
 
 ```mermaid
 flowchart TD
-    VideoInput[CCTV / Video Input] -->|Frame Capture| MLWorker[ML Background Worker]
-    MLWorker -->|YOLO Pose & Tracking| BehaviourEngine[Behavior Engine]
-    BehaviourEngine -->|SQLAlchemy| DB[(PostgreSQL Database)]
-    BehaviourEngine -->|Publish 'alerts'| Redis[(Redis PubSub)]
+    Browser[Browser]
     
-    FastAPI[FastAPI API Server] -->|SQLAlchemy| DB
-    Redis -->|Subscribe 'alerts'| FastAPI
+    subgraph Docker Compose
+      Frontend[Frontend (Next.js)]
+      Backend[Backend (FastAPI)]
+      DB[(PostgreSQL)]
+      Redis[(Redis)]
+    end
     
-    FastAPI -->|WebSockets| NextJS[Next.js Frontend Clients]
-    FastAPI -->|HTTP REST| NextJS
+    MLWorker[Native ML Worker\n(Python, YOLO, OpenCV)]
+    
+    %% External Browser Connections
+    Browser -- "http://localhost:3000" --> Frontend
+    Browser -- "http://localhost:8000" --> Backend
+    Browser -- "http://localhost:5000/video_feed" --> MLWorker
+    
+    %% Internal Docker Connections
+    Backend -- "postgres://db:5432" --> DB
+    Backend -- "redis://redis:6379" --> Redis
+    Frontend -- "Depends on" --> Backend
+    
+    %% Native to Docker Connections
+    MLWorker -- "postgres://localhost:5432" --> DB
+    MLWorker -- "redis://localhost:6379" --> Redis
 ```
 
----
+### Dockerized Services:
+- **Frontend** (Next.js)
+- **Backend** (FastAPI)
+- **PostgreSQL** (Database)
+- **Redis** (Message Broker)
 
-## 📌 Current Development Status
-
-The codebase consists of the following components:
-- **`ml_worker/`**: Headless Python background daemon running YOLOv8 tracking + custom pose-based spatial heuristics.
-- **`backend/`**: FastAPI REST API + WebSocket broadcaster + JWT Authentication.
-- **`frontend/`**: Modern Next.js (App Router, Tailwind CSS v4, Shadcn UI) web application dashboard.
-- **`src/dashboard/`**: Streamlit dashboard prototype (legacy monolithic visualizer).
-
----
-
-## ✅ What's Working (Implemented Features)
-
-### 1. Headless Background ML Worker
-* Decoupled tracking and behavioral calculations from UI loops.
-* Runs YOLOv8 multi-object tracking (ByteTrack) and Pose Estimation.
-* Custom normalization heuristics using the `BehaviorEngine` (adjusts thresholds based on student distance/shoulder width).
-* Tracks:
-  * Sideward glances.
-  * Repeated head turns.
-  * Body rotations.
-  * Unusual hand/wrist movements.
-  * Non-verbal communication/gestures.
-* Writes events directly to PostgreSQL.
-* Publishes real-time events to Redis channel `alerts`.
-
-### 2. FastAPI REST & WebSocket Server
-* **Authentication**: JWT login service (`/api/auth/login`) with role authorization (Admin vs. Invigilator) using bcrypt hashed passwords.
-* **Event History**: Paginated (`skip`/`limit`) and filterable (`student_id`, `behaviour_type`) GET API endpoint.
-* **Analytics**: Aggregated summary API (`/api/analytics/summary`) returning grouped alert counts by behavior type.
-* **Dynamic Settings**: Routes to query and patch thresholds in the DB (`GET /api/settings`, `PATCH /api/settings`).
-* **Real-time Broadcaster**: WebSocket connection (`WS /api/ws/alerts`) subscribing to Redis and broadcasting instantly to clients.
-
-### 3. Next.js Web Client Scaffold
-* **Application Shell**: Fully responsive sidebar navigation and user account status bar.
-* **Axios API Client**: Handles session configuration, header injection (`Bearer <token>`), and global 401 response interceptors.
-* **Global Auth Provider**: Custom React Context managing session states, local storage token caching, and user routing security.
-* **Real-Time Live Feed Alerts**: Active alerts page streaming raw events instantly via WebSocket without polling.
-* **Scalable Data Views**: Paginated Historical Event Log table and Client-Side Aggregated metrics views.
-* **Settings Portal**: Dynamic CRUD form interacting directly with backend dynamic settings, while gracefully denoting legacy settings gaps.
-* **Failure Tolerance**: Robust loading states (skeletons), error boundaries (connection fallback details), and empty states across all pages.
-
-### 4. Tests
-* Comprehensive automated integration and unit tests validating behavioral heuristics, pipeline logic, and database integrations.
+### Native Host Service:
+- **ML Worker** (YOLOv8, OpenCV, MJPEG Server)
 
 ---
 
-## 🧠 Technology Stack
+## 3. Tech Stack
 
-### ML / Processing
-* **Language:** Python (3.10 - 3.14)
-* **Computer Vision:** OpenCV, Ultralytics YOLOv8 / YOLO Pose
-* **Math & Processing:** NumPy, Pandas, PyYAML
-* **Models:** `yolov8s-pose.pt`
-
-### Backend
-* **Framework:** FastAPI
-* **Runtime:** Python / Uvicorn
-* **Database ORM:** SQLAlchemy
-* **Migrations:** Alembic
-* **Authentication:** PyJWT, passlib[bcrypt]
-
-### Database & Message Broker
-* **Database:** PostgreSQL (15+)
-* **PubSub:** Redis (7+)
-
-### Frontend (Dashboard)
-* **Framework:** Next.js (16+ App Router, React 19)
-* **Styling:** Tailwind CSS (v4)
-* **Component Library:** Shadcn UI (Zinc theme)
-* **Icons:** Lucide React
-* **State & Networking:** React Context + Axios
-
-### Development & Orchestration
-* **Virtual Environment:** Python venv
-* **Containerization:** Docker Compose
-* **Testing:** Pytest
-* **Package Manager:** npm
+| Layer | Technology | Purpose |
+| --- | --- | --- |
+| **Frontend** | Next.js 16.3 / React 19 / TypeScript | Web application framework |
+| **Styling** | Tailwind CSS v4 | Utility-first UI styling |
+| **Components** | Shadcn UI | Accessible UI primitives |
+| **HTTP Client** | Axios | Backend REST communication |
+| **Charts** | Recharts | Analytics visualization |
+| **Tables** | TanStack Table v8 | Complex event data grids |
+| **Forms** | React Hook Form + Zod | Form handling and validation |
+| **Backend** | FastAPI | REST API & WebSocket server |
+| **Database** | PostgreSQL 15 | Persistent relational storage |
+| **Messaging** | Redis 7 | Real-time alert pub/sub |
+| **ML Engine** | YOLOv8 + OpenCV | Video processing & pose tracking |
+| **Streaming** | MJPEG | Local video stream transport |
 
 ---
 
-## 📂 Project Structure
+## 4. Repository Structure
 
 ```text
 DrishtiAI-project/
-├── backend/                  # FastAPI Application
-│   ├── alembic/              # Database migration scripts
-│   │   └── env.py
-│   ├── src/
-│   │   ├── api/              # API router directories
-│   │   │   ├── analytics.py  # Aggregate metrics endpoint
-│   │   │   ├── auth.py       # Authentication router
-│   │   │   ├── events.py     # Paginated events endpoint
-│   │   │   ├── settings.py   # System configs endpoint
-│   │   │   └── websockets.py # Redis sub / WS broadcast manager
-│   │   ├── core/             # Database connection & security config
-│   │   │   ├── database.py
-│   │   │   └── security.py
-│   │   └── models.py         # SQLAlchemy Base Models
-│   ├── alembic.ini           # Alembic config file
-│   ├── main.py               # Backend API server startup
-│   └── requirements.txt      # Backend Python dependencies
-├── ml_worker/                # Headless ML processing background worker
-│   ├── core/                 # Shared core visual tracking algorithms
-│   │   ├── alerts/
-│   │   ├── behaviour/
-│   │   ├── detection/
-│   │   └── pose/
-│   └── worker.py             # Headless pipeline entry point
-├── frontend/                 # Next.js web application
-│   ├── src/
-│   │   ├── app/              # App Router pages and layouts
-│   │   │   ├── dashboard/    # Sub-routes: alerts, analytics, events, settings, students
-│   │   │   ├── sign-in/      # Login view
-│   │   │   ├── globals.css   # Tailwind configurations
-│   │   │   ├── layout.tsx
-│   │   │   └── page.tsx      # Public landing page
-│   │   ├── components/       # Custom React and UI elements
-│   │   │   ├── layout/       # Sidebar, Navbar
-│   │   │   └── ui/           # Shadcn base elements
-│   │   ├── context/          # React AuthContext Provider
-│   │   └── lib/              # api.ts client & utility directories
-│   ├── components.json       # Shadcn CLI config
-│   ├── package.json          # Node dependencies
-│   └── .env.example          # Environment variables template
-├── tests/                    # Pytest test suites (Unit & Integration)
-│   ├── integration/
-│   │   └── demo_simulator.py
-│   └── unit/
-├── src/                      # Legacy monolithic pipeline codebase
-│   └── dashboard/            # Legacy Streamlit prototype
-│       └── dashboard.py
-├── docker-compose.yml        # Local development database & broker setup
-├── config.yaml               # Legacy project configurations
-├── requirements.txt          # Root Python dependencies (ML, Streamlit)
-└── README.md                 # Project README
+├── frontend/                 # Next.js Application (Dockerized)
+│   ├── src/                  # App Router pages and UI components
+│   ├── Dockerfile            # Multi-stage standalone build
+│   └── next.config.ts        # Next.js configurations
+├── backend/                  # FastAPI Application (Dockerized)
+│   ├── src/                  # API routers, DB core, and models
+│   ├── scripts/              # Local seed scripts (e.g., create_admin.py)
+│   └── Dockerfile            # Python slim build
+├── ml_worker/                # Native ML worker (Not Dockerized)
+│   ├── core/                 # YOLO behavior heuristics
+│   └── worker.py             # Entrypoint for CV tracking and MJPEG server
+├── tests/                    # Pytest test suites
+├── docker-compose.yml        # Docker composition for web stack
+└── README.md                 # Project Documentation
 ```
 
 ---
 
-## 🛠️ How to Install and Run
+## 5. Streamlit → Next.js Migration
 
-### Prerequisites
-* **Python** 3.10 to 3.14 installed.
-* **Node.js** v18+ and **npm** installed.
-* **Docker & Docker Compose** installed.
+The project migrated from a coupled Streamlit monolithic UI to a modern Next.js UI.
 
-### 1. Spin up Databases
-Run Docker Compose in the project root:
-```bash
-docker compose up -d
+| Legacy Streamlit | Current Next.js | Status |
+| --- | --- | --- |
+| `dashboard.py` | `/dashboard` | Migrated |
+| `01_Live_Feeds.py` | `/dashboard/alerts` | Migrated |
+| `02_Students.py` | `/dashboard/students` | Partially Migrated |
+| `03_Analytics.py` | `/dashboard/analytics` | Migrated |
+| `04_Event_Log.py` | `/dashboard/events` | Migrated |
+| `05_Settings.py` | `/dashboard/settings` | Migrated |
+
+---
+
+## 6. Current Frontend Pages
+
+| Route | Purpose | Backend API Used | Auth Required |
+| --- | --- | --- | --- |
+| `/` | Landing page | None | No |
+| `/sign-in` | Login portal | `POST /api/auth/login` | No |
+| `/sign-up` | Registration portal | `POST /api/auth/register` | No |
+| `/dashboard` | System overview | `GET /api/analytics/summary` | Yes |
+| `/dashboard/alerts` | Live monitoring | WS / MJPEG Stream | Yes |
+| `/dashboard/events` | Event history | `GET /api/events` | Yes |
+| `/dashboard/analytics` | Aggregation charts | `GET /api/analytics/summary` | Yes |
+| `/dashboard/settings` | System config | `GET` & `PATCH /api/settings` | Yes (Admin) |
+
+---
+
+## 7. Backend API Overview
+
+| Endpoint | Method | Purpose | Auth Required |
+| --- | --- | --- | --- |
+| `/api/health` | GET | Container health check | No |
+| `/api/auth/login` | POST | Authentication & JWT issuance | No |
+| `/api/auth/register` | POST | User registration | No |
+| `/api/analytics/summary` | GET | Analytics aggregation | Yes |
+| `/api/events/` | GET | Event history | Yes |
+| `/api/settings/` | GET | Read settings | Yes |
+| `/api/settings/` | PATCH | Update settings | Yes (Admin) |
+| `/api/ws/alerts` | WS | Real-time alerts broadcaster | No (Current Limitation) |
+
+---
+
+## 8. ML Worker
+The ML worker (`ml_worker/worker.py`) is run **natively on the host CPU/GPU** (not inside Docker Compose) to avoid NVIDIA toolkit/passthrough configuration overheads during local development.
+
+1. **YOLO + OpenCV**: Reads video frames and runs YOLOv8 pose estimation.
+2. **Behavior Engine**: Evaluates keypoint coordinates (shoulder angle, nose vectors, etc.).
+3. **Event Generation**: Exceeding confidence thresholds triggers a database commit to `localhost:5432`.
+4. **Publishing**: Instantly publishes alert JSON payloads to Redis via `localhost:6379`.
+5. **Video Streaming**: Runs an embedded thread serving MJPEG frames on `localhost:5000/video_feed`.
+
+---
+
+## 9. Real-Time Flow
+
+**Alert Data Flow:**
+```text
+ML Worker (Native)
+ → Redis (Docker :6379)
+ → FastAPI WebSocket Listener (Docker)
+ → Next.js (Docker :3000)
+ → Browser Alert UI
 ```
-This spins up PostgreSQL (`localhost:5432`) and Redis (`localhost:6379`).
 
-### 2. Configure Virtual Environment & Install Dependencies
-Create and activate your Python virtual environment, then install dependencies:
-```bash
-python -m venv .venv
-# On Windows PowerShell:
-.\.venv\Scripts\Activate.ps1
-# On Linux/macOS:
-source .venv/bin/activate
-
-# Install packages
-pip install -r requirements.txt
-pip install -r backend/requirements.txt
+**Live Video Flow:**
+```text
+ML Worker (Native)
+ → OpenCV JPEG Encoding
+ → FastAPI (Native :5000)
+ → Browser <img> (Direct via localhost:5000/video_feed)
 ```
 
-### 3. Run Database Migrations
-Run Alembic migrations to build PostgreSQL tables:
-```bash
-cd backend
-alembic upgrade head
-cd ..
+---
+
+## 10. Environment Variables
+
+> **⚠️ Security Warning:** Never commit real credentials.
+
+### Root Level / Docker Compose (`.env`)
+Passed into the `docker-compose.yml` safely.
+```env
+POSTGRES_USER=examguard_user
+POSTGRES_PASSWORD=dummy_local_password
+POSTGRES_DB=examguard
+JWT_SECRET=dummy_local_secret
 ```
 
-### 4. Run the Backend API
-Start the FastAPI app locally:
-```bash
-python backend/main.py
+### Backend (`backend/.env`)
+Inside the Docker network, backend resolves `db` and `redis`.
+```env
+DATABASE_URL=postgresql://examguard_user:dummy_local_password@db:5432/examguard
+REDIS_URL=redis://redis:6379
+JWT_SECRET=dummy_local_secret
 ```
-The API server will launch at: `http://localhost:8000`. You can inspect the Swagger interactive documentation at `http://localhost:8000/docs`.
 
-### 5. Run the Background ML Worker
-Start processing video inputs and streaming logs:
+### Frontend (`frontend/.env.local`)
+Since these are read by the browser, they **must** use `localhost`, not Docker network names!
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_WS_URL=ws://localhost:8000
+NEXT_PUBLIC_VIDEO_STREAM_URL=http://localhost:5000/video_feed
+```
+
+### ML Worker (`ml_worker/.env`)
+Since this runs natively, it targets the host's published Docker ports.
+```env
+DATABASE_URL=postgresql://examguard_user:dummy_local_password@localhost:5432/examguard
+REDIS_URL=redis://localhost:6379
+```
+
+---
+
+## 11. Local Setup Procedure
+
+Follow these commands to deploy the local development environment:
+
+**1. Copy Environment Variables**
 ```bash
+cp .env.example .env
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env.local
+cp ml_worker/.env.example ml_worker/.env
+```
+
+**2. Start the Docker Stack**
+```bash
+docker compose up --build -d
+```
+*This spins up PostgreSQL, Redis, Backend (FastAPI), and Frontend (Next.js).*
+
+**3. Initialize Database Migrations**
+The database schema must be deployed via Alembic from the backend container:
+```bash
+docker compose exec backend alembic upgrade head
+```
+
+**4. Start the Native ML Worker (Terminal 2)**
+```bash
+# Ensure Python 3.10+ virtual env is active, dependencies are installed
 python ml_worker/worker.py
 ```
-*(By default, it will download YOLO weights if not present, process `input videos/04.CCTV Candidate Talking.mkv`, write events to PostgreSQL, and publish them to Redis).*
 
-### 6. Run the Next.js Frontend
-From the root directory, navigate to `frontend`, install packages, and boot the web dev server:
+**5. Access the Platform**
+Open `http://localhost:3000` in your web browser.
+
+---
+
+## 12. Temporary Login Bypass
+
+> ⚠️ **Temporary local-development authentication active!**
+
+To instantly bypass the authentication logic and access the dashboard locally, use the following credentials on the `/sign-in` page:
+* **Username**: `admin`
+* **Password**: `1234`
+
+*Note: This bypass is temporary, insecure, and must be removed before deployment. It does not create a database user, but rather generates a dummy local JWT payload to satisfy the frontend UI Context.*
+
+---
+
+## 13. Database Initialization & Reset
+
+If you need to reset your local database, you can destroy the persistent PostgreSQL volume:
+
 ```bash
-cd frontend
-npm install
-npm run dev
-```
-The client app will launch at: `http://localhost:3000`.
-
-### 7. Run the Streamlit Visualizer (Legacy)
-```bash
-streamlit run src/dashboard/dashboard.py
-```
-Expected Streamlit port: `http://localhost:8501`.
-
----
-
-## 🔌 API Overview
-
-| Tag | Method | Endpoint | Purpose | Authorization |
-| --- | --- | --- | --- | --- |
-| **Auth** | `POST` | `/api/auth/login` | Log in and receive JWT | Public |
-| **Events** | `GET` | `/api/events` | Retrieve paginated history of cheating events | Authenticated (JWT) |
-| **Analytics**| `GET` | `/api/analytics/summary` | Retrieve count of alerts grouped by type | Authenticated (JWT) |
-| **Settings** | `GET` | `/api/settings` | Read system configurations and thresholds | Authenticated (JWT) |
-| **Settings** | `PATCH` | `/api/settings` | Update configuration thresholds in real time | Admin Only |
-| **WS** | `WS` | `/api/ws/alerts` | Open a WebSocket connection for real-time alerts | Public |
-| **System** | `GET` | `/api/health` | API health check | Public |
-
----
-
-## 🗄️ Database Schema
-
-SQLAlchemy Models are configured inside `/backend/src/models.py`.
-
-### Primary Entities
-* **`User`**: Admin and Invigilator accounts with credentials.
-  * `id` (PK, Integer)
-  * `username` (String, Unique)
-  * `password_hash` (String)
-  * `role` (Enum: Admin / Invigilator)
-* **`Student`**: Represents tracked candidate records.
-  * `id` (PK, String - Anonymized ID)
-* **`Event`**: Specific alert triggers flagged by the AI.
-  * `id` (PK, Integer)
-  * `student_id` (FK to `students.id`)
-  * `behaviour_type` (String)
-  * `confidence` (Float)
-  * `explanation` (Text)
-  * `timestamp` (DateTime)
-  * `keypoints` (JSONB)
-* **`SystemConfig` (`settings` table)**: Runtime thresholds.
-  * `id` (PK, Integer)
-  * `key` (String, Unique)
-  * `value` (String)
-
----
-
-## 🔒 Environment Variables
-
-Database URLs and authorization configurations are configured via environment variables.
-
-### Backend (`/backend/`)
-| Variable | Component | Required | Purpose | Default |
-| --- | --- | --- | --- | --- |
-| `DATABASE_URL` | Backend / Worker | Optional | Target Postgres connection string | `postgresql://examguard_user:supersecretpassword@localhost:5432/examguard` |
-| `REDIS_URL` | Backend | Optional | Target Redis connection string | `redis://localhost:6379` |
-| `SECRET_KEY` | Backend | Optional | Token security algorithm secret key | `dummy_secret_for_hackathon` |
-| `ALGORITHM` | Backend | Optional | JWT sign algorithm | `HS256` |
-
-### Frontend (`/frontend/`)
-Create a `.env.local` file inside the `frontend/` directory to configure variables:
-| Variable | Component | Required | Purpose | Default |
-| --- | --- | --- | --- | --- |
-| `NEXT_PUBLIC_API_URL` | Frontend | Yes | API Gateway Host URL | `http://localhost:8000` |
-
----
-
-## 🧪 Testing
-
-Testing is implemented with `pytest` using unit and integration architectures in the `tests/` directory.
-
-### Running Tests
-Make sure your virtual environment is active, then execute:
-```bash
-.\.venv\Scripts\python -m pytest tests/
+# WARNING: This deletes all local database data!
+docker compose down -v
 ```
 
-### Current Status
-* **18 tests passing** (0 failures).
-* Covered features:
-  * Behavior normalization heuristics.
-  * Live-loop mock tracking pipelines.
-  * Logging configurations and cooldown rules.
-  * Simulated candidate cheating scenarios.
+After doing so, you must run migrations again:
+```bash
+docker compose up -d
+docker compose exec backend alembic upgrade head
+```
 
 ---
 
-## 📦 Docker Container Setup
+## 14. Docker Commands
 
-The local environment services are specified in `/docker-compose.yml`:
-* **`examguard-postgres`** (image: `postgres:15-alpine`): Exposes port `5432`. Backed by volume `postgres_data`.
-* **`examguard-redis`** (image: `redis:7-alpine`): Exposes port `6379`. Backed by volume `redis_data`.
-
----
-
-## 🔄 Recent Changes
-
-### Next.js Frontend Scaffold
-* Configured Next.js 16 + React 19 App Router setup using the latest npm CLI.
-* Integrates custom Tailwind CSS v4 variables with a dark-zinc theme.
-* Configured core Shadcn UI layout components (Button, Input, Card, Table, Sonner notifications, Skeletons).
-* Created a client side authentication gate leveraging global React Context and Axios interceptors.
-* Developed 6 distinct subviews mimicking legacy Streamlit capabilities while calling live HTTP REST and WebSocket APIs.
-
-### Backend Scaffolding
-* Created FastAPI entry point (`backend/main.py`) and routed modular api subdirectories.
-* Switched data storage from a local JSON/CSV file engine to a Relational Database (PostgreSQL).
-* Configured Alembic migration environments.
-
-### ML Decoupling
-* Completely separated ML YOLO model processes from UI execution blocks.
-* Moved headless worker loop to `/ml_worker/worker.py`.
-
-### PubSub and Real-Time Alerts
-* Configured Redis message broker.
-* Connected worker alert loops to Redis publish methods.
-* Developed client-facing WebSocket connections.
+* **Build & Start**: `docker compose up --build -d`
+* **Stop**: `docker compose down`
+* **Restart**: `docker compose restart`
+* **View Status**: `docker compose ps`
+* **View All Logs**: `docker compose logs -f`
+* **View Backend Logs**: `docker compose logs -f backend`
+* **View Frontend Logs**: `docker compose logs -f frontend`
 
 ---
 
-## ⚖️ Disclaimer
+## 15. Troubleshooting Networking Contexts
 
-ExamGuard is an experimental AI-assisted monitoring system. Computer vision results can be affected by lighting, camera position, occlusion, image quality, and student posture.
+If connections are failing, ensure you understand the networking boundaries:
 
-**AI-generated alerts must be treated as signals for human review and not as definitive evidence of cheating or academic misconduct.** For more detailed context, refer to the documentation inside the `info/` directory.
+### Browser Issues (CORS / Websockets failing)
+❌ **Wrong:** `NEXT_PUBLIC_API_URL=http://backend:8000`
+✅ **Correct:** `NEXT_PUBLIC_API_URL=http://localhost:8000`
+*(Your browser cannot resolve Docker internal DNS)*
+
+### Backend Database Issues
+❌ **Wrong:** `DATABASE_URL=...localhost:5432...`
+✅ **Correct:** `DATABASE_URL=...db:5432...`
+*(The backend container must talk to the db container via Docker DNS)*
+
+### ML Worker Database Issues
+❌ **Wrong:** `DATABASE_URL=...db:5432...`
+✅ **Correct:** `DATABASE_URL=...localhost:5432...`
+*(The native worker running on your OS host talks to Docker via the published host port)*
+
+### Video Feed Unavailable
+Verify that `python ml_worker/worker.py` is actively running natively and occupying `localhost:5000`.
+
+---
+
+## 16. Current Limitations
+
+* **ML Worker natively runs**: Local development currently requires a manual, native start of `ml_worker/worker.py` to avoid complex GPU configurations.
+* **Temporary hardcoded login**: The `/sign-in` route bypasses real authentication with `admin / 1234`.
+* **WebSocket lacks JWT authentication**: Alert streams are completely unauthenticated.
+* **Local MJPEG Unencrypted**: Video transport is unencrypted HTTP natively from Python.
+* **Pagination limitations**: The backend lacks `total_count` payloads for accurate page sizing in tables.
+* **Deployment limitations**: No cloud proxy, HTTPS, or production orchestration is configured yet.
+
+---
+
+## 17. Technical Debt
+
+* **Auth Bypass**: Needs immediate removal before deploying.
+* **Shared ML Architecture**: The MJPEG server shares a python thread lock with the YOLO inference loop.
+* **Missing Tests**: No end-to-end tests (Cypress/Playwright) for the Next.js frontend exist yet.
+* **Schema Redundancies**: Pydantic models and Typescript types are manually synced.
+
+---
+
+## 18. Security Considerations (Pre-Deployment)
+
+The stack is **not deployment-ready**. You must resolve:
+1. Removal of `admin/1234` temporary login logic in `frontend/src/app/sign-in/page.tsx`.
+2. Secure JWT cookie storage instead of local storage.
+3. Secure the `/api/ws/alerts` WebSocket endpoint.
+4. Replace `.env.example` dummy passwords with actual secure cloud secret injection.
+
+---
+
+## 19. Future Roadmap
+
+### Phase 1 to 5
+Status: **Completed**
+
+### Phase 6 — Real-Time Video & Events
+Status: **Completed (Local)**
+
+### Phase 7 — Dockerized Infrastructure
+Status: **Completed (Local Compose for Web Stack)**
+
+### Phase 8 — Authentication Hardening
+Status: **Future**
+* Enforce JWT security.
+* Replace temporary login.
+
+### Phase 9 — Future ML Dockerization
+Status: **Future**
+* Requires evaluating NVIDIA Container Toolkit.
+* Requires CUDA-compatible base images.
+* Model weights and webcam hardware passthrough handling.
+* Not required for immediate local development.
+
+### Phase 10 — Production Deployment
+Status: **Future**
+* Cloud hosting (e.g., Vercel, AWS ECS).
+* Reverse proxy with HTTPS (Nginx / Traefik).
+
+---
+
+## 20. Verification Checklist
+
+**Docker & Backend**
+- [ ] `docker compose ps` shows all containers running.
+- [ ] `http://localhost:8000/api/health` succeeds.
+- [ ] Backend successfully reads/writes to `db:5432`.
+
+**Frontend**
+- [ ] `http://localhost:3000` loads.
+- [ ] `admin / 1234` bypass logs the user in.
+- [ ] Dashboard charts fetch from the backend correctly.
+
+**Native ML Worker**
+- [ ] Connects to PostgreSQL at `localhost:5432`.
+- [ ] Publishes to Redis at `localhost:6379`.
+- [ ] MJPEG Stream plays at `localhost:5000/video_feed`.
+- [ ] Alerts appear as Toasts in the frontend via WebSocket.
