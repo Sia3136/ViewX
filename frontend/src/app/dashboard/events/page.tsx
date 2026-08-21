@@ -1,21 +1,34 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import { columns, EventResponse } from './columns';
+import { DataTable } from './data-table';
+import { AlertCircle } from 'lucide-react';
+
+const PAGE_SIZE = 20;
 
 export default function EventsPage() {
-  const [events, setEvents] = useState<any[]>([]);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Parse page from URL, default to 1, ensure >= 1
+  const rawPage = parseInt(searchParams.get('page') || '1', 10);
+  const page = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
+
+  const [events, setEvents] = useState<EventResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     async function fetchEvents() {
+      setLoading(true);
+      setError('');
       try {
-        const response = await api.get('/api/events/?limit=100');
+        const skip = (page - 1) * PAGE_SIZE;
+        const response = await api.get(`/api/events/?skip=${skip}&limit=${PAGE_SIZE}`);
         setEvents(response.data);
       } catch (err) {
         setError('Failed to load event log.');
@@ -24,13 +37,18 @@ export default function EventsPage() {
       }
     }
     fetchEvents();
-  }, []);
+  }, [page]);
 
-  const getConfidenceBadge = (confidence: number) => {
-    if (confidence >= 0.85) return <Badge variant="destructive">High</Badge>;
-    if (confidence >= 0.70) return <Badge className="bg-amber-500 hover:bg-amber-600">Medium</Badge>;
-    return <Badge className="bg-emerald-500 hover:bg-emerald-600">Low</Badge>;
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', newPage.toString());
+    router.push(`?${params.toString()}`);
   };
+
+  // If we receive exactly PAGE_SIZE records, we guess there is a next page.
+  // We do not have total_count from API.
+  const hasNextPage = events.length === PAGE_SIZE;
 
   return (
     <div className="space-y-6">
@@ -41,63 +59,27 @@ export default function EventsPage() {
 
       <Card className="bg-zinc-900 border-zinc-800 text-white">
         <CardHeader>
-          <CardTitle>Recent Events (Latest 100)</CardTitle>
+          <CardTitle>Historical Events</CardTitle>
           <CardDescription className="text-zinc-400">
-            Historical events are paginated via the backend API.
+            Chronological log of alerts synchronized with the PostgreSQL database.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {error && <div className="text-red-500 mb-4">{error}</div>}
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-3 rounded-md flex items-center gap-2 text-sm mb-4">
+              <AlertCircle className="h-4 w-4" />
+              {error}
+            </div>
+          )}
           
-          <div className="rounded-md border border-zinc-800">
-            <Table>
-              <TableHeader className="bg-zinc-950">
-                <TableRow className="border-zinc-800">
-                  <TableHead className="text-zinc-400">Timestamp</TableHead>
-                  <TableHead className="text-zinc-400">Student ID</TableHead>
-                  <TableHead className="text-zinc-400">Behaviour</TableHead>
-                  <TableHead className="text-zinc-400">Severity</TableHead>
-                  <TableHead className="text-zinc-400">Confidence</TableHead>
-                  <TableHead className="text-zinc-400">Explanation</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i} className="border-zinc-800">
-                      <TableCell><Skeleton className="h-4 w-24 bg-zinc-800" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-16 bg-zinc-800" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-32 bg-zinc-800" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-16 bg-zinc-800" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-12 bg-zinc-800" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-48 bg-zinc-800" /></TableCell>
-                    </TableRow>
-                  ))
-                ) : events.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-zinc-500">
-                      No events found.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  events.map((event) => (
-                    <TableRow key={event.id} className="border-zinc-800">
-                      <TableCell className="font-mono text-xs">
-                        {new Date(event.timestamp).toLocaleString()}
-                      </TableCell>
-                      <TableCell>{event.student_id || 'Unknown'}</TableCell>
-                      <TableCell className="capitalize">{event.behaviour_type.replace(/_/g, ' ')}</TableCell>
-                      <TableCell>{getConfidenceBadge(event.confidence)}</TableCell>
-                      <TableCell>{(event.confidence * 100).toFixed(0)}%</TableCell>
-                      <TableCell className="max-w-xs truncate text-zinc-400" title={event.explanation}>
-                        {event.explanation}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          <DataTable 
+            columns={columns} 
+            data={events} 
+            loading={loading}
+            page={page}
+            onPageChange={handlePageChange}
+            hasNextPage={hasNextPage}
+          />
         </CardContent>
       </Card>
     </div>
