@@ -301,7 +301,7 @@ Core REST APIs are done. We must implement real-time hooks before the frontend b
 * **How:** Create a FastAPI WebSocket route. Spawn an `asyncio` background task that listens to the Redis `alerts` channel and forwards messages to all connected WebSocket clients.
 * **Tech:** FastAPI WebSockets, `redis.asyncio`.
 * **Files:** `/backend/src/api/websockets.py`.
-* **Definition of Done:** Sending a manual Redis publish message appears in a test WebSocket client.
+* **Definition of Done:** Sending a manual Redis publish message appears in a test WebSocket client.  
 
 ---
 
