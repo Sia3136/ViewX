@@ -4,8 +4,13 @@ import numpy as np
 import sys
 import os
 import json
+import threading
 from datetime import datetime
 from collections import defaultdict, deque
+
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+import uvicorn
 
 # Add root directory to python path
 sys.path.append(os.path.abspath('.'))
@@ -29,6 +34,13 @@ VIDEO_PATH = "input videos/04.CCTV Candidate Talking.mkv"
 CONFIDENCE = 0.49
 HISTORY_LENGTH = 100
 COOLDOWN_SECONDS = 10.0
+
+# Shared state for MJPEG streaming
+global_frame = None
+frame_lock = threading.Lock()
+stop_event = threading.Event()
+
+app = FastAPI(title="ML Worker Video Stream")
 
 def get_db_session():
     """Initializes and returns a new SQLAlchemy database session."""
@@ -130,7 +142,7 @@ def run_worker():
     frame_count = 0
 
     try:
-        while True:
+        while not stop_event.is_set():
             success, frame = cap.read()
             if not success:
                 print("End of video stream or failed to read frame.")
@@ -190,10 +202,51 @@ def run_worker():
             if frame_count % 100 == 0:
                 print(f"Processed {frame_count} frames. Video Time: {current_video_time:.2f}s")
                 
+            # Update global frame for streaming
+            annotated_frame = result.plot()
+            ret, buffer = cv2.imencode('.jpg', annotated_frame)
+            if ret:
+                with frame_lock:
+                    global global_frame
+                    global_frame = buffer.tobytes()
+                
     finally:
         cap.release()
         db_session.close()
         print("Video processing complete.")
 
+def video_generator():
+    """Generator for MJPEG stream that yields the latest frame."""
+    while True:
+        with frame_lock:
+            frame = global_frame
+            
+        if frame is None:
+            # If no frame is ready, wait a bit
+            time.sleep(0.1)
+            continue
+            
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        
+        # Limit to ~25fps streaming rate (0.04s)
+        time.sleep(0.04)
+
+@app.get("/video_feed")
+def video_feed():
+    """Returns the live MJPEG video stream."""
+    return StreamingResponse(video_generator(), media_type="multipart/x-mixed-replace; boundary=frame")
+
+@app.on_event("shutdown")
+def shutdown_event():
+    """Signal the background worker to stop gracefully on server shutdown."""
+    print("Shutting down worker thread...")
+    stop_event.set()
+
 if __name__ == "__main__":
-    run_worker()
+    # Start the OpenCV worker loop in a background thread
+    worker_thread = threading.Thread(target=run_worker, daemon=True)
+    worker_thread.start()
+    
+    # Run the FastAPI server to serve the stream
+    uvicorn.run(app, host="0.0.0.0", port=5000)

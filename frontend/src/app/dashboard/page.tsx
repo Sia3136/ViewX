@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Activity, ShieldAlert, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -10,6 +11,8 @@ export default function Dashboard() {
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [videoStatus, setVideoStatus] = useState<'connecting' | 'live' | 'error'>('connecting');
+  const videoUrl = process.env.NEXT_PUBLIC_VIDEO_STREAM_URL || 'http://localhost:5000/video_feed';
 
   useEffect(() => {
     async function fetchSummary() {
@@ -86,15 +89,35 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle>Live Surveillance Feed</CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-            <div className="border-2 border-dashed border-zinc-700 rounded-lg p-12 w-full flex flex-col items-center justify-center bg-zinc-950/50">
-              <ShieldAlert className="h-12 w-12 text-zinc-500 mb-4" />
-              <h3 className="text-lg font-medium text-zinc-300">Video Stream Unavailable</h3>
-              <p className="text-sm text-zinc-500 mt-2 max-w-sm">
-                Live MJPEG streaming is currently not supported by the FastAPI backend. 
-                This is a known backend gap identified during the Streamlit migration.
-              </p>
-            </div>
+          <CardContent className="flex-1 flex flex-col items-center justify-center p-0 overflow-hidden relative min-h-[400px]">
+            {videoStatus === 'connecting' && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950/50 z-10">
+                <Skeleton className="h-12 w-12 rounded-full mb-4 bg-zinc-800" />
+                <h3 className="text-lg font-medium text-zinc-300">Connecting to stream...</h3>
+              </div>
+            )}
+            {videoStatus === 'error' && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950/80 z-10 p-6 text-center border-2 border-dashed border-zinc-700">
+                <ShieldAlert className="h-12 w-12 text-zinc-500 mb-4" />
+                <h3 className="text-lg font-medium text-zinc-300">Video Stream Unavailable</h3>
+                <p className="text-sm text-zinc-500 mt-2 max-w-sm">
+                  The ML Worker is currently unreachable or not running. Please ensure the worker is started.
+                </p>
+                <Button variant="outline" className="mt-4" onClick={() => setVideoStatus('connecting')}>
+                  Retry Connection
+                </Button>
+              </div>
+            )}
+            
+            {videoStatus !== 'error' && (
+              <img 
+                src={videoUrl} 
+                alt="Live CCTV Feed"
+                className={`w-full h-full object-contain ${videoStatus === 'live' ? 'opacity-100' : 'opacity-0'}`}
+                onLoad={() => setVideoStatus('live')}
+                onError={() => setVideoStatus('error')}
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -118,7 +141,9 @@ export default function Dashboard() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-zinc-400">Live Video Engine</span>
-                <span className="text-sm font-medium text-zinc-500">Offline</span>
+                <span className={`text-sm font-medium ${videoStatus === 'live' ? 'text-emerald-500' : 'text-amber-500'}`}>
+                  {videoStatus === 'live' ? 'Operational' : (videoStatus === 'connecting' ? 'Connecting' : 'Offline')}
+                </span>
               </div>
             </div>
           </CardContent>

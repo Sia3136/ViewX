@@ -6,7 +6,8 @@ import redis.asyncio as redis
 
 router = APIRouter()
 
-REDIS_URL = "redis://localhost:6379"
+import os
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 
 class ConnectionManager:
     def __init__(self):
