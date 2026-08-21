@@ -22,16 +22,6 @@ export default function SignIn() {
     setError('');
 
     try {
-      // TEMPORARY LOCAL DEVELOPMENT LOGIN BYPASS.
-      // REMOVE when proper authentication/signup flow is restored.
-      if (username === "admin" && password === "1234") {
-        const dummyPayload = btoa(JSON.stringify({ sub: 'admin', role: 'admin' }));
-        const dummyToken = `dummy.${dummyPayload}.dummy`;
-        login(dummyToken);
-        setIsLoading(false);
-        return;
-      }
-
       const formData = new URLSearchParams();
       formData.append('username', username);
       formData.append('password', password);
