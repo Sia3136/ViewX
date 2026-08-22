@@ -5,6 +5,7 @@ import sys
 import os
 import json
 import threading
+import queue
 from datetime import datetime
 from collections import defaultdict, deque
 
@@ -24,14 +25,20 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from backend.src.models import Event, Student
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 # Configuration Constants
-DB_URL = "postgresql://examguard_user:supersecretpassword@localhost:5432/examguard"
-REDIS_HOST = "localhost"
-REDIS_PORT = 6379
-REDIS_DB = 0
-MODEL_NAME = "yolov8s-pose.pt"
-VIDEO_PATH = "input videos/04.CCTV Candidate Talking.mkv"
-CONFIDENCE = 0.49
+DB_URL = os.environ.get("DATABASE_URL", "postgresql://examguard_user:supersecretpassword@localhost:5432/examguard")
+REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.environ.get("REDIS_PORT", "6379"))
+REDIS_DB = int(os.environ.get("REDIS_DB", "0"))
+MODEL_NAME = os.environ.get("MODEL_NAME", "yolov8s-pose.pt")
+VIDEO_PATH = os.environ.get("VIDEO_PATH", "input videos/04.CCTV Candidate Talking.mkv")
+CONFIDENCE = float(os.environ.get("CONFIDENCE_THRESHOLD", "0.49"))
 HISTORY_LENGTH = 100
 COOLDOWN_SECONDS = 10.0
 
@@ -52,6 +59,40 @@ def get_redis_client():
     """Initializes and returns a Redis client."""
     return redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
 
+db_queue = queue.Queue()
+
+def db_writer_thread():
+    """Background thread to handle database writes asynchronously."""
+    db_session = get_db_session()
+    print("Database writer thread started.")
+    try:
+        while True:
+            try:
+                task = db_queue.get()
+                if task is None:
+                    break
+                
+                student_id, alert, keypoints = task
+                ensure_student_exists(db_session, student_id)
+                
+                db_event = Event(
+                    student_id=student_id,
+                    behaviour_type=alert['behavior'],
+                    confidence=alert['confidence'],
+                    explanation=alert['reason'],
+                    keypoints=keypoints
+                )
+                db_session.add(db_event)
+                db_session.commit()
+            except Exception as e:
+                print(f"Error in DB writer thread: {e}")
+                db_session.rollback()
+            finally:
+                db_queue.task_done()
+    finally:
+        db_session.close()
+        print("Database writer thread stopped.")
+
 def ensure_student_exists(db_session, student_id: str):
     """Checks if a student exists in the database, and creates one if not."""
     student = db_session.query(Student).filter(Student.id == student_id).first()
@@ -61,19 +102,9 @@ def ensure_student_exists(db_session, student_id: str):
         db_session.commit()
     return student
 
-def log_event_to_db(db_session, student_id: str, alert: dict, keypoints: dict):
-    """Saves a behavior alert event to the PostgreSQL database."""
-    ensure_student_exists(db_session, student_id)
-    
-    db_event = Event(
-        student_id=student_id,
-        behaviour_type=alert['behavior'],
-        confidence=alert['confidence'],
-        explanation=alert['reason'],
-        keypoints=keypoints
-    )
-    db_session.add(db_event)
-    db_session.commit()
+def log_event_to_db(student_id: str, alert: dict, keypoints: dict):
+    """Enqueues a behavior alert event to be saved by the background thread."""
+    db_queue.put((student_id, alert, keypoints))
 
 def publish_alert_to_redis(redis_client, student_id: str, alert: dict):
     """Publishes a behavior alert event to the Redis 'alerts' channel."""
@@ -136,8 +167,10 @@ def run_worker():
     student_history = defaultdict(lambda: deque(maxlen=HISTORY_LENGTH))
     last_logged_time = defaultdict(float)
     
-    db_session = get_db_session()
     redis_client = get_redis_client()
+    
+    db_thread = threading.Thread(target=db_writer_thread, daemon=True)
+    db_thread.start()
 
     frame_count = 0
 
@@ -195,7 +228,7 @@ def run_worker():
                             print(f"[ALERT] {student_str_id} -> {alert['behavior']} (Conf: {alert['confidence']})")
                             
                             # Log and Publish alert
-                            log_event_to_db(db_session, student_str_id, alert, features)
+                            log_event_to_db(student_str_id, alert, features)
                             publish_alert_to_redis(redis_client, student_str_id, alert)
 
             # Heartbeat indicator
@@ -212,7 +245,7 @@ def run_worker():
                 
     finally:
         cap.release()
-        db_session.close()
+        db_queue.put(None) # Signal DB thread to stop
         print("Video processing complete.")
 
 def video_generator():
