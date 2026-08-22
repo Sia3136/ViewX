@@ -28,7 +28,11 @@ export function DemoModeProvider({ children }: { children: React.ReactNode }) {
     let reconnectTimer: NodeJS.Timeout;
 
     const connectWebSocket = () => {
-      ws = new WebSocket("ws://localhost:8000/api/ws/alerts");
+      const token = localStorage.getItem("access_token");
+      const wsUrl = token
+        ? `ws://localhost:8000/api/ws/alerts?token=${token}`
+        : `ws://localhost:8000/api/ws/alerts`;
+      ws = new WebSocket(wsUrl);
 
       ws.onmessage = (event) => {
         try {
