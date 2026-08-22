@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+sqlalchemy
+alembic
+psycopg2-binary
+passlib
+bcrypt==3.2.2
+pyjwt
+pydantic
+pydantic-settings
+python-multipart
+redis
+websockets
