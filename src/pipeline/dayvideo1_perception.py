@@ -17,35 +17,40 @@ from src.utils.schemas import BehaviourEvent
 from pathlib import Path
 
 import math
-import numpy as np
-from collections import defaultdict, deque
 
-import cv2
-import os
+SEVERITY = {
+    "prohibited_object": "CRITICAL",
+    "sustained_neighbour_gaze": "HIGH",
+    "staring_at_neighbour_paper": "HIGH",
+    "lean_and_look": "HIGH",
+    "repeated_sideward_glance": "MEDIUM",
+    "excessive_head_turning": "MEDIUM",
+    "nonverbal_communication": "MEDIUM",
+    "body_rotation": "LOW",
+    "unusual_hand_movement": "LOW",
+    "student_standing": "LOW",
+}
 
-video_path = "data/videos/Video1.mkv"   # change path
-out_dir = "data/frames_for_labeling"
-os.makedirs(out_dir, exist_ok=True)
+FRIENDLY = {
+    "prohibited_object": "Phone/Object",
+    "sustained_neighbour_gaze": "Sustained Gaze",
+    "staring_at_neighbour_paper": "Staring at Paper",
+    "lean_and_look": "Lean and Look",
+    "repeated_sideward_glance": "Side Glances",
+    "excessive_head_turning": "Head Turning",
+    "nonverbal_communication": "Non-verbal",
+    "body_rotation": "Body Rotation",
+    "unusual_hand_movement": "Hand Movement",
+    "student_standing": "Student Standing",
+}
 
-cap = cv2.VideoCapture(video_path)
-fps = cap.get(cv2.CAP_PROP_FPS) or 25
-frame_id = 0
-saved = 0
+def enhance_lighting(frame):
+    lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    l2 = clahe.apply(l)
+    return cv2.cvtColor(cv2.merge([l2, a, b]), cv2.COLOR_LAB2BGR)
 
-# save 1 frame every 1 second
-interval = int(fps)
-
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        break
-    if frame_id % interval == 0:
-        cv2.imwrite(f"{out_dir}/vid1_{saved:05d}.jpg", frame)
-        saved += 1
-    frame_id += 1
-
-cap.release()
-print("Saved", saved, "frames")
 
 def _valid(pt):
     return pt is not None and pt[0] > 0 and pt[1] > 0
@@ -95,6 +100,8 @@ def draw_alert_panel(frame, active_alerts, panel_width=320):
         # wrap long text
         if len(text) > 42:
             text = text[:39] + "..."
+        
+     
 
         # alert row background
         cv2.rectangle(frame, (w - panel_w + 8, y - 18), (w - 8, y + 8), (0, 0, 180), -1)
@@ -171,6 +178,23 @@ def compute_dual_triangle_head_pose(kpts):
 head_score_history = defaultdict(lambda: deque(maxlen=90))  # ~3 sec at 30fps
 DYNAMIC_BASE = 0.12          # base |turn_score| threshold
 DYNAMIC_STD_MULT = 1.5       # how much extra from person's own variation
+
+
+import os
+from datetime import datetime
+
+os.makedirs("outputs/evidence", exist_ok=True)
+
+def save_evidence(frame, box, student_id, behavior_type, ts):
+    x1, y1, x2, y2 = map(int, box)
+    h, w = frame.shape[:2]
+    pad = 20
+    x1, y1 = max(0, x1-pad), max(0, y1-pad)
+    x2, y2 = min(w, x2+pad), min(h, y2+pad)
+    crop = frame[y1:y2, x1:x2]
+    fname = f"outputs/evidence/{student_id}_{behavior_type}_{ts:.1f}.jpg"
+    cv2.imwrite(fname, crop)
+    return fname
 
 def get_dynamic_threshold(track_id, turn_score):
     """
@@ -325,8 +349,8 @@ sitting_confirm = {}       # track_id → consecutive sitting frames
 invigilator_boxes = []
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-VIDEO_PATH = PROJECT_ROOT / "src" / "data" / "videos" / "Video3.mkv"
-OUTPUT_PATH = "outputs/3_output.mp4"
+VIDEO_PATH = PROJECT_ROOT / "data" / "videos" / "Video1.mkv"
+OUTPUT_PATH = "outputs/1_output.mp4"
 MODEL_NAME = "yolov8s-pose.pt"
 CONFIDENCE = 0.3
 HISTORY_LENGTH = 60
@@ -368,6 +392,7 @@ student_turns = defaultdict(int)
 last_direction = {}
 active_alerts = {}
 alert_cooldown = defaultdict(int)
+feedback_mgr = FeedbackManager()
 
 print("🚀 Pipeline Started...")
 frame_count = 0
@@ -386,8 +411,10 @@ while True:
         out.write(annotated_frame)
         continue
 
+    invigilator_boxes = []
+    frame_for_infer = enhance_lighting(frame)
     results = model.track(
-        frame,
+        frame_for_infer,
         conf=CONFIDENCE,
         persist=True,
         tracker="custom_bytetrack.yaml",
@@ -421,14 +448,13 @@ while True:
             if track_id in invigilator_ids or near_old or standing_now:
                 invigilator_ids.add(track_id)
                 invigilator_centers.append((cx, cy))
-                invigilator_centers = invigilator_centers[-5:]  # keep last few
+                invigilator_centers = invigilator_centers[-5:]
+                invigilator_boxes.append([x1, y1, x2, y2])
 
-        # clear student state
                 active_alerts.pop(track_id, None)
                 if track_id in student_history:
                     student_history[track_id].clear()
 
-        # draw only invigilator
                 cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (255, 150, 0), 1)
                 cv2.putText(annotated_frame, "Invigilator", (x1, max(y1 - 6, 12)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 150, 0), 1)
@@ -600,56 +626,66 @@ while True:
             engine.detect_body_rotation,
             engine.detect_unusual_hand_movements,
             engine.detect_nonverbal_communication,
-            engine.detect_staring_at_neighbour_paper,
-            engine.detect_student_standing
+            engine.detect_sustained_neighbour_gaze,   # keep this if it exists
+            engine.detect_lean_and_look,              # only if you added it
+            engine.detect_student_standing,
             
         ]
 
         for detector in detectors:
             result = detector(history_list)
-            behavior_type = result["behavior"]
-            print(f"ALERT t={video_timestamp:.1f}s ID={sid} type={behavior_type} conf={result['confidence']:.2f}")
+            if not result.get("detected"):
+                continue
+            if result.get("confidence", 0) < 0.55:
+                continue
 
-            if behavior_type == "staring_at_neighbour_paper":
+            behavior_type = result["behavior"]
+
+            if behavior_type in ("staring_at_neighbour_paper", "sustained_neighbour_gaze"):
                 latest = history_list[-1]
                 student_box = latest.get("box", [0, 0, 0, 0])
                 head_ori = latest.get("head_orientation", "Center")
-
                 if is_looking_towards_invigilator(student_box, head_ori, invigilator_boxes):
                     continue
-                
-            if result["detected"]:
-                behavior_type = result["behavior"]
-                cooldown_key = (sid, behavior_type)
 
-                if alert_cooldown[cooldown_key] <= 0:
-                    event = BehaviourEvent(
-                        student_id=str(sid),
-                        behaviour_type=behavior_type,
-                        confidence=result["confidence"],
-                        explanation=result["reason"],
-                        timestamp=video_timestamp,
-                        frame_number=frame_count,
-                        evidence={}
-                    )
-                    if alert_manager.create_alert(event):
-                        event_logger.log_event({
-                        "student_id": str(event.student_id),
-                        "behaviour_type": str(event.behaviour_type),
-                        "confidence": float(event.confidence),
-                        "explanation": str(event.explanation),
-                        "timestamp": float(event.timestamp),
-                        "keypoints_snapshot": {}
-})
-                        active_alerts[sid] = f"{behavior_type} | Conf: {int(result['confidence']*100)}%"
-                        alert_cooldown[cooldown_key] = int(fps * 3)
-                        feedback_mgr = FeedbackManager()
-                        if result["detected"]:
-                            penalty = feedback_mgr.get_confidence_penalty(result["behavior"])
-                            adjusted_conf = result["confidence"] * (1.0 - penalty)
+            cooldown_key = (sid, behavior_type)
+            if alert_cooldown[cooldown_key] > 0:
+                continue
 
-                            if adjusted_conf < 0.55:      # suppress weak alerts after feedback
-                                continue
+            box = history_list[-1]["box"]
+            path = save_evidence(annotated_frame, box, sid, behavior_type, video_timestamp)
+            event = BehaviourEvent(
+                student_id=str(sid),
+                behaviour_type=behavior_type,
+                confidence=result["confidence"],
+                explanation=result["reason"],
+                timestamp=video_timestamp,
+                frame_number=frame_count,
+                evidence={}
+            )
+            if alert_manager.create_alert(event):
+                event_logger.log_event({
+                    "student_id": str(event.student_id),
+                    "behaviour_type": str(event.behaviour_type),
+                    "confidence": float(event.confidence),
+                    "explanation": str(event.explanation),
+                    "timestamp": float(event.timestamp),
+                    "keypoints_snapshot": {}
+                })
+                sev = SEVERITY.get(behavior_type, "LOW")
+                name = FRIENDLY.get(behavior_type, behavior_type)
+                active_alerts[sid] = f"[{sev}] {name} | {int(result['confidence'] * 100)}%"
+                alert_cooldown[cooldown_key] = int(fps * 3)
+
+                penalty = feedback_mgr.get_confidence_penalty(result["behavior"])
+                adjusted_conf = result["confidence"] * (1.0 - penalty)
+                if adjusted_conf < 0.55:
+                    continue
+
+                print(
+                    f"ALERT t={video_timestamp:.1f}s ID={sid} "
+                    f"type={behavior_type} conf={result['confidence']:.2f} sev={sev} evidence={path}"
+                )
 
     # Decrease cooldowns
     for key in list(alert_cooldown.keys()):
