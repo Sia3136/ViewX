@@ -188,7 +188,11 @@ def is_looking_towards_invigilator(student_box, head_orientation, invigilator_bo
 
     return False
 
-def is_likely_invigilator(kpts, box, frame_height):
+def is_likely_invigilator(kpts, box, frame_height, all_height_ratios=None):
+    """
+    Standing invigilator check.
+    all_height_ratios: list of height_ratio of every person in this frame (for relative check).
+    """
     x1, y1, x2, y2 = box
     bbox_height = y2 - y1
     bbox_width = max(x2 - x1, 1)
@@ -200,44 +204,43 @@ def is_likely_invigilator(kpts, box, frame_height):
     right_hip = kpts[12] if len(kpts) > 12 else (0, 0)
     left_ankle = kpts[15] if len(kpts) > 15 else (0, 0)
     right_ankle = kpts[16] if len(kpts) > 16 else (0, 0)
-    left_knee = kpts[13] if len(kpts) > 13 else (0, 0)
-    right_knee = kpts[14] if len(kpts) > 14 else (0, 0)
 
     head_pos = nose[1] / frame_height if nose[1] > 0 else 1.0
+    ankles_visible = (left_ankle[0] > 0 or right_ankle[0] > 0)
 
-    hips_visible = left_hip[0] > 0 and right_hip[0] > 0
-    ankles_visible = left_ankle[0] > 0 or right_ankle[0] > 0
-    knees_visible = left_knee[0] > 0 or right_knee[0] > 0
-
-    if hips_visible:
+    if left_hip[0] > 0 and right_hip[0] > 0:
         hip_y = (left_hip[1] + right_hip[1]) / 2.0
         hip_rel = (hip_y - y1) / max(bbox_height, 1)
     else:
         hip_rel = 0.5
 
-    # Strong reject: clearly seated / short in frame
-    if height_ratio < 0.45:
+    # Strong seated reject
+    if height_ratio < 0.40:
         return False
-    if head_pos > 0.35 and height_ratio < 0.58:
+    if head_pos > 0.38 and height_ratio < 0.55:
         return False
-    if hips_visible and hip_rel > 0.62:
-        return False   # hips low in box → sitting
+    if hip_rel > 0.65 and height_ratio < 0.55:
+        return False
 
     standing_score = 0
     if height_ratio > 0.55:
         standing_score += 2
-    if height_ratio > 0.48 and aspect > 1.6:
+    if height_ratio > 0.48 and aspect > 1.45:
         standing_score += 1
-    if head_pos < 0.25:
+    if head_pos < 0.28:
         standing_score += 2
-    if ankles_visible and height_ratio > 0.50:
+    if ankles_visible and height_ratio > 0.48:
         standing_score += 1
-    if knees_visible and height_ratio > 0.50:
-        standing_score += 1
-    if hips_visible and 0.32 <= hip_rel <= 0.55:
+    if 0.30 <= hip_rel <= 0.58:
         standing_score += 1
 
-    return standing_score >= 4   # need stronger evidence
+    # Relative: clearly taller than other people in frame
+    if all_height_ratios and len(all_height_ratios) >= 2:
+        median_h = float(np.median(all_height_ratios))
+        if height_ratio > median_h * 1.25 and height_ratio > 0.42:
+            standing_score += 2
+
+    return standing_score >= 3 # need stronger evidence
 
 invigilator_ids = set()
 invigilator_confirm = {}   # track_id → consecutive standing frames
@@ -245,8 +248,8 @@ sitting_confirm = {}       # track_id → consecutive sitting frames
 invigilator_boxes = []
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-VIDEO_PATH = PROJECT_ROOT / "src" / "data" / "videos" / "Video3.mkv"
-OUTPUT_PATH = "outputs/day3_output.mp4"
+VIDEO_PATH = PROJECT_ROOT / "src" / "data" / "videos" / "Video6.mkv"
+OUTPUT_PATH = "outputs/5_output.mp4"
 MODEL_NAME = "yolov8s-pose.pt"
 CONFIDENCE = 0.45
 HISTORY_LENGTH = 60
@@ -321,7 +324,8 @@ while True:
         track_ids = results[0].boxes.id.int().cpu().tolist()
         keypoints = results[0].keypoints.xy.cpu().numpy()
         boxes, track_ids, keypoints = remove_duplicate_tracks(boxes, track_ids, keypoints)
-        
+        all_height_ratios = []
+        temp_people = []
 
         for box, track_id, kpts in zip(boxes, track_ids, keypoints):
             x1, y1, x2, y2 = map(int, box)
