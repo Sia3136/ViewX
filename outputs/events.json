@@ -5430,5 +5430,61 @@
     "explanation": "Repeated sideward head orientation (4 glances) exceeded temporal thresholds.",
     "timestamp": 67.83333333333333,
     "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "4",
+    "behaviour_type": "unusual_hand_movement",
+    "confidence": 0.85,
+    "explanation": "Hand movement exceeded threshold continuously for the required duration.",
+    "timestamp": 81.0,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "3",
+    "behaviour_type": "unusual_hand_movement",
+    "confidence": 0.85,
+    "explanation": "Hand movement exceeded threshold continuously for the required duration.",
+    "timestamp": 81.83333333333333,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "4",
+    "behaviour_type": "staring_at_neighbour_paper",
+    "confidence": 0.87,
+    "explanation": "Sustained head turn toward neighbour (80% of time) while looking downward for ~45s.",
+    "timestamp": 85.66666666666667,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "3",
+    "behaviour_type": "Repeated Side Glances",
+    "confidence": 1.0,
+    "explanation": "Repeated sideward head orientation (4 glances) exceeded temporal thresholds.",
+    "timestamp": 85.83333333333333,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "5",
+    "behaviour_type": "Excessive Head Turning",
+    "confidence": 1.0,
+    "explanation": "Detected 6 head direction changes within the rolling window.",
+    "timestamp": 86.33333333333333,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "4",
+    "behaviour_type": "unusual_hand_movement",
+    "confidence": 0.85,
+    "explanation": "Hand movement exceeded threshold continuously for the required duration.",
+    "timestamp": 87.0,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "3",
+    "behaviour_type": "unusual_hand_movement",
+    "confidence": 0.85,
+    "explanation": "Hand movement exceeded threshold continuously for the required duration.",
+    "timestamp": 87.83333333333333,
+    "keypoints_snapshot": {}
   }
 ]
