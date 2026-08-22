@@ -38,30 +38,15 @@ export function CameraGrid() {
    * http://localhost:8000/api/video/1
    */
 
-  const videoSources = [
-    process.env.NEXT_PUBLIC_CAMERA_1_URL || "/videos/camera1.mp4",
-    process.env.NEXT_PUBLIC_CAMERA_2_URL || "/videos/camera2.mp4",
-    process.env.NEXT_PUBLIC_CAMERA_3_URL || "/videos/camera3.mp4",
-    process.env.NEXT_PUBLIC_CAMERA_4_URL || "/videos/camera4.mp4",
-  ];
-
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         {cameras.map((cam, i) => {
-          /*
-           * Only the first four cameras receive real feeds.
-           * Cameras 5+ remain offline.
-           */
-          const isRealCamera = i < 4;
-
-          const videoUrl = isRealCamera
-            ? videoSources[i]
-            : undefined;
+          const videoUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/monitoring/${cam.id}/stream`;
 
           const adjustedCamera: Camera = {
             ...cam,
-            status: isRealCamera ? "live" : "offline",
+            status: "live",
           };
 
           return (
@@ -117,14 +102,10 @@ export function CameraGrid() {
 
               {focused.videoUrl &&
               focused.status !== "offline" ? (
-                <video
+                <img
                   src={focused.videoUrl}
                   className="w-full h-full object-cover"
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  controls
+                  alt="Live camera feed"
                 />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center p-6 z-20">

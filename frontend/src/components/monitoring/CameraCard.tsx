@@ -180,13 +180,9 @@ export function CameraCard({
         {/* ========================= */}
 
         {videoUrl && !offline ? (
-          <video
+          <img
             src={videoUrl}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
+            alt="Live camera feed"
             className="w-full h-full object-cover transition-transform duration-200"
             style={{
               transform: `scale(${zoom})`,

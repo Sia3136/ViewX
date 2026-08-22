@@ -102,8 +102,7 @@ export default function AlertsPage() {
       if (filter === "RESOLVED") {
         return (
           alert.status === "resolved" ||
-          alert.status === "dismissed" ||
-          alert.status === "confirm"
+          alert.status === "dismissed"
         );
       }
 
@@ -293,19 +292,12 @@ export default function AlertsPage() {
       ) : (
         /* ALERT GRID */
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {filteredAlerts.map((alert, index) => (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+          {filteredAlerts.map((alert) => (
             <AlertCard
               key={alert.id}
               alert={alert}
-              index={index}
-              onReview={(a) => setSelectedAlert(a)}
-              onDismiss={(a) =>
-                handleAction(a, "dismiss")
-              }
-              onEscalate={(a) =>
-                handleAction(a, "escalate")
-              }
+              onClick={() => setSelectedAlert(alert)}
             />
           ))}
         </div>

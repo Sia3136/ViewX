@@ -12,5 +12,5 @@ python-multipart
 redis
 websockets
 ultralytics
-opencv-python
+opencv-python-headless
 lap

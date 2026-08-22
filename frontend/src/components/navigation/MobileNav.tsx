@@ -3,54 +3,64 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  Video,
-  Users,
-  Activity,
+  LayoutGrid,
+  Eye,
   BellRing,
+  Users,
   Menu,
   X,
+  CalendarClock,
+  BarChart3,
+  FileText,
   Settings,
 } from "lucide-react";
 import { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import {
+  AnimatePresence,
+  motion,
+} from "framer-motion";
 import { useDemoMode } from "@/lib/demo-context";
 import { cn } from "@/lib/utils";
 
 const PRIMARY = [
   {
     href: "/",
-    label: "Dashboard",
-    icon: LayoutDashboard,
+    label: "Overview",
+    icon: LayoutGrid,
   },
   {
     href: "/monitoring",
-    label: "Feeds",
-    icon: Video,
+    label: "Monitoring",
+    icon: Eye,
+  },
+  {
+    href: "/alerts",
+    label: "Alerts",
+    icon: BellRing,
+    badge: true,
   },
   {
     href: "/students",
     label: "Students",
     icon: Users,
   },
-  {
-    href: "/alerts",
-    label: "Events",
-    icon: BellRing,
-    badge: true,
-  },
 ];
 
 const MORE = [
   {
+    href: "/sessions",
+    label: "Exam Sessions",
+    icon: CalendarClock,
+  },
+  {
     href: "/analytics",
     label: "Analytics",
-    icon: Activity,
+    icon: BarChart3,
   },
   {
     href: "/reports",
     label: "Reports",
-    icon: Activity,
+    icon: FileText,
   },
   {
     href: "/settings",
@@ -61,12 +71,14 @@ const MORE = [
 
 export function MobileNav() {
   const pathname = usePathname();
+
   const [open, setOpen] = useState(false);
 
   const { liveAlertCount } = useDemoMode();
 
   return (
     <>
+      {/* Bottom nav */}
       <nav
         className="
           lg:hidden
@@ -75,22 +87,20 @@ export function MobileNav() {
           left-4
           right-4
           z-30
-          bg-[var(--surface)]
-          border
           rounded-2xl
+          border
+          bg-[var(--surface)]
+          shadow-xl
           flex
           items-center
           justify-around
           px-2
           py-2
-          shadow-lg
         "
       >
         {PRIMARY.map((item) => {
           const active =
-            pathname === item.href ||
-            (item.href !== "/" &&
-              pathname.startsWith(item.href));
+            pathname === item.href;
 
           const Icon = item.icon;
 
@@ -103,16 +113,17 @@ export function MobileNav() {
               <div
                 className={cn(
                   `
-                  relative
-                  mx-auto
-                  flex
-                  flex-col
-                  items-center
-                  gap-0.5
-                  py-2
-                  px-3
-                  rounded-xl
-                  w-fit
+                    relative
+                    mx-auto
+                    flex
+                    flex-col
+                    items-center
+                    gap-1
+                    py-2
+                    px-3
+                    rounded-xl
+                    w-fit
+                    transition-colors
                   `,
                   active
                     ? "bg-[var(--text)] text-[var(--bg)]"
@@ -120,6 +131,10 @@ export function MobileNav() {
                 )}
               >
                 <Icon size={18} />
+
+                <span className="text-[9px] font-medium">
+                  {item.label}
+                </span>
 
                 {item.badge &&
                   liveAlertCount > 0 && (
@@ -130,10 +145,11 @@ export function MobileNav() {
                         -right-1
                         min-w-4
                         h-4
+                        px-1
                         rounded-full
-                        bg-[var(--text)]
-                        text-[var(--bg)]
-                        text-[9px]
+                        bg-red-500
+                        text-white
+                        text-[8px]
                         font-mono
                         flex
                         items-center
@@ -151,22 +167,29 @@ export function MobileNav() {
         <button
           onClick={() => setOpen(true)}
           className="
-            flex-1
             flex
+            flex-1
+            flex-col
             items-center
-            justify-center
+            gap-1
             py-2
+            px-3
             text-[var(--text-2)]
           "
           aria-label="More navigation"
         >
-          <Menu size={20} />
+          <Menu size={18} />
+          <span className="text-[9px] font-medium">
+            More
+          </span>
         </button>
       </nav>
 
+      {/* More menu */}
       <AnimatePresence>
         {open && (
           <>
+            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -176,16 +199,21 @@ export function MobileNav() {
                 fixed
                 inset-0
                 z-40
-                bg-black/50
+                bg-black/40
                 backdrop-blur-sm
               "
               onClick={() => setOpen(false)}
             />
 
+            {/* Menu */}
             <motion.div
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
+              transition={{
+                duration: 0.3,
+                ease: [0.4, 0, 0.2, 1],
+              }}
               className="
                 lg:hidden
                 fixed
@@ -201,13 +229,24 @@ export function MobileNav() {
               "
             >
               <div className="flex items-center justify-between mb-5">
-                <span className="font-semibold">
-                  ViewX
-                </span>
+                <div>
+                  <div className="font-semibold">
+                    ViewX
+                  </div>
+
+                  <div className="text-xs text-[var(--text-2)]">
+                    Monitoring Console
+                  </div>
+                </div>
 
                 <button
                   onClick={() => setOpen(false)}
                   aria-label="Close menu"
+                  className="
+                    p-2
+                    rounded-full
+                    hover:bg-[var(--surface-2)]
+                  "
                 >
                   <X size={20} />
                 </button>
@@ -222,19 +261,33 @@ export function MobileNav() {
                     className="
                       flex
                       items-center
-                      gap-2
+                      gap-3
                       p-4
                       rounded-xl
-                      bg-[var(--surface-2)]
                       border
+                      bg-[var(--surface-2)]
                       text-sm
                       font-medium
+                      hover:bg-[var(--text)]
+                      hover:text-[var(--bg)]
+                      transition-colors
                     "
                   >
                     <item.icon size={17} />
+
                     {item.label}
                   </Link>
                 ))}
+              </div>
+
+              <div className="mt-6 pt-4 border-t">
+                <div className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-2)]">
+                  Hackathon Sponsor
+                </div>
+
+                <div className="text-sm font-medium mt-1">
+                  DEX-IT Global
+                </div>
               </div>
             </motion.div>
           </>

@@ -14,41 +14,43 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const [aiOpen, setAiOpen] = useState(false);
-
   const { theme } = useTheme();
 
   return (
-    <div className="relative min-h-screen flex bg-[var(--bg)]">
-      {/* BACKGROUND */}
+    <div className="relative min-h-screen flex bg-[var(--bg)] text-[var(--text)]">
+
+      {/* Background atmosphere */}
       {theme === "dark" ? (
         <div className="atmosphere-dark" />
       ) : (
-        <div className="texture-layer" />
+        <>
+          <div className="texture-layer" />
+          <div className="dot-grid" />
+        </>
       )}
 
-      {/* SIDEBAR */}
+      {/* Desktop sidebar */}
       <GlassSidebar />
 
-      {/* MAIN */}
-      <div className="relative z-10 flex-1 flex flex-col min-w-0">
-        {/* HEADER */}
-        <TopExamBar
-          onOpenAI={() => setAiOpen(true)}
-        />
+      {/* Main application area */}
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
 
-        {/* CONTENT */}
-        <main className="flex-1 px-4 sm:px-6 lg:px-6 py-5 pb-24 lg:pb-6">
+        {/* Top header */}
+        <TopExamBar onOpenAI={() => setAiOpen(true)} />
+
+        {/* Page content */}
+        <main className="flex-1 px-4 pb-24 pt-5 sm:px-6 lg:px-7 lg:pb-8">
           {children}
         </main>
       </div>
 
-      {/* MOBILE NAV */}
+      {/* Mobile navigation */}
       <MobileNav />
 
-      {/* OLD DEMO TOGGLE - KEEP FUNCTIONALITY */}
+      {/* Demo mode */}
       <DemoModeToggle />
 
-      {/* AI ASSISTANT */}
+      {/* AI monitoring assistant */}
       <AIAssistant
         open={aiOpen}
         onClose={() => setAiOpen(false)}

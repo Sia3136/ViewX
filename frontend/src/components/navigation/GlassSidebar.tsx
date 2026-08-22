@@ -3,7 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { LayoutDashboard, Video, Users, Activity, FileText, Settings, ChevronLeft, Moon, Sun, BellRing, Shield, } from "lucide-react";
+import {
+  LayoutGrid,
+  Eye,
+  BellRing,
+  Users,
+  CalendarClock,
+  BarChart3,
+  FileText,
+  Settings,
+  ShieldCheck,
+  ChevronLeft,
+  Moon,
+  Sun,
+} from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "@/lib/theme-context";
 import { useDemoMode } from "@/lib/demo-context";
@@ -12,13 +25,19 @@ import { cn } from "@/lib/utils";
 const NAV_ITEMS = [
   {
     href: "/",
-    label: "Dashboard",
-    icon: LayoutDashboard,
+    label: "Overview",
+    icon: LayoutGrid,
   },
   {
     href: "/monitoring",
-    label: "Live Feeds",
-    icon: Video,
+    label: "Live Monitoring",
+    icon: Eye,
+  },
+  {
+    href: "/alerts",
+    label: "Active Alerts",
+    icon: BellRing,
+    badge: true,
   },
   {
     href: "/students",
@@ -26,15 +45,19 @@ const NAV_ITEMS = [
     icon: Users,
   },
   {
-    href: "/analytics",
-    label: "Analytics",
-    icon: Activity,
+    href: "/sessions",
+    label: "Exam Sessions",
+    icon: CalendarClock,
   },
   {
-    href: "/alerts",
-    label: "Event Log",
-    icon: BellRing,
-    badge: true,
+    href: "/analytics",
+    label: "Analytics",
+    icon: BarChart3,
+  },
+  {
+    href: "/reports",
+    label: "Reports",
+    icon: FileText,
   },
   {
     href: "/settings",
@@ -49,15 +72,16 @@ export function GlassSidebar() {
   const [collapsed, setCollapsed] = useState(false);
 
   const { theme, toggleTheme } = useTheme();
+
   const { liveAlertCount } = useDemoMode();
 
   return (
     <motion.aside
       animate={{
-        width: collapsed ? 82 : 250,
+        width: collapsed ? 82 : 258,
       }}
       transition={{
-        duration: 0.25,
+        duration: 0.3,
         ease: [0.4, 0, 0.2, 1],
       }}
       className="
@@ -69,17 +93,23 @@ export function GlassSidebar() {
         sticky
         top-0
         z-30
-        bg-[var(--surface)]
         border-r
+        bg-[var(--surface)]
         px-3
         py-5
       "
     >
+      {/* ===================================================== */}
       {/* BRAND */}
+      {/* ===================================================== */}
+
       <div className="flex items-center gap-3 px-2 mb-8">
+
+        {/* Logo */}
         <div
           className="
-            w-10 h-10
+            w-9
+            h-9
             rounded-xl
             bg-[var(--text)]
             text-[var(--bg)]
@@ -89,23 +119,24 @@ export function GlassSidebar() {
             shrink-0
           "
         >
-          <Shield size={19} />
+          <ShieldCheck size={18} />
         </div>
 
         {!collapsed && (
           <div className="min-w-0">
-            <div className="font-semibold leading-tight tracking-tight">
+            <div className="font-semibold tracking-tight leading-tight">
               ViewX
             </div>
 
-            <div className="text-[9px] tracking-[0.18em] text-[var(--text-2)] font-mono">
-              AI MONITORING
+            <div className="text-[9px] tracking-[0.18em] text-[var(--text-2)] font-mono mt-0.5">
+              EXAM MONITORING
             </div>
           </div>
         )}
 
+        {/* Collapse */}
         <button
-          onClick={() => setCollapsed((c) => !c)}
+          onClick={() => setCollapsed((value) => !value)}
           aria-label={
             collapsed
               ? "Expand navigation"
@@ -113,12 +144,13 @@ export function GlassSidebar() {
           }
           className="
             ml-auto
-            rounded-lg
+            rounded-full
             p-1.5
             text-[var(--text-2)]
             hover:bg-[var(--surface-2)]
             hover:text-[var(--text)]
             transition-colors
+            shrink-0
           "
         >
           <motion.span
@@ -132,8 +164,12 @@ export function GlassSidebar() {
         </button>
       </div>
 
+      {/* ===================================================== */}
       {/* NAVIGATION */}
+      {/* ===================================================== */}
+
       <nav className="flex flex-col gap-1 flex-1">
+
         {NAV_ITEMS.map((item) => {
           const active =
             pathname === item.href ||
@@ -152,23 +188,28 @@ export function GlassSidebar() {
                 whileHover={{
                   x: collapsed ? 0 : 2,
                 }}
+                transition={{
+                  duration: 0.2,
+                }}
                 className={cn(
                   `
-                  relative
-                  flex
-                  items-center
-                  gap-3
-                  px-3
-                  py-2.5
-                  rounded-xl
-                  text-sm
-                  font-medium
-                  transition-all
+                    relative
+                    flex
+                    items-center
+                    gap-3
+                    px-3
+                    py-2.5
+                    rounded-xl
+                    text-sm
+                    font-medium
+                    transition-all
+                    duration-200
                   `,
                   active
                     ? `
                       bg-[var(--text)]
                       text-[var(--bg)]
+                      shadow-sm
                     `
                     : `
                       text-[var(--text-2)]
@@ -188,39 +229,61 @@ export function GlassSidebar() {
                   </span>
                 )}
 
+                {/* Alert badge */}
                 {!collapsed &&
                   item.badge &&
                   liveAlertCount > 0 && (
                     <span
                       className={cn(
                         `
-                        ml-auto
-                        min-w-5
-                        h-5
-                        px-1.5
-                        rounded-full
-                        flex
-                        items-center
-                        justify-center
-                        text-[10px]
-                        font-mono
+                          ml-auto
+                          min-w-5
+                          h-5
+                          px-1.5
+                          rounded-full
+                          flex
+                          items-center
+                          justify-center
+                          text-[10px]
+                          font-mono
+                          font-semibold
                         `,
                         active
-                          ? "bg-[var(--bg)] text-[var(--text)]"
-                          : "bg-[var(--text)] text-[var(--bg)]"
+                          ? "bg-white/15 text-white"
+                          : "bg-red-500 text-white"
                       )}
                     >
                       {liveAlertCount}
                     </span>
                   )}
+
+                {/* Active indicator */}
+                {active && !collapsed && (
+                  <motion.span
+                    layoutId="nav-active"
+                    className="
+                      absolute
+                      -left-[5px]
+                      w-1.5
+                      h-5
+                      rounded-full
+                      bg-[var(--text)]
+                    "
+                  />
+                )}
               </motion.div>
             </Link>
           );
         })}
       </nav>
 
-      {/* BOTTOM */}
+      {/* ===================================================== */}
+      {/* BOTTOM AREA */}
+      {/* ===================================================== */}
+
       <div className="border-t pt-3 mt-3 flex flex-col gap-2">
+
+        {/* Theme */}
         <button
           onClick={toggleTheme}
           className="
@@ -252,14 +315,49 @@ export function GlassSidebar() {
           )}
         </button>
 
+        {/* User */}
+        <div className="flex items-center gap-3 px-3 py-2">
+
+          <div
+            className="
+              w-8
+              h-8
+              rounded-full
+              bg-[var(--surface-2)]
+              border
+              flex
+              items-center
+              justify-center
+              text-xs
+              font-semibold
+              shrink-0
+            "
+          >
+            AD
+          </div>
+
+          {!collapsed && (
+            <div className="min-w-0">
+              <div className="text-sm font-medium truncate">
+                Administrator
+              </div>
+
+              <div className="text-xs text-[var(--text-2)] truncate">
+                Monitoring Team
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Sponsor */}
         {!collapsed && (
           <div className="px-3 pt-2">
-            <div className="text-[9px] uppercase tracking-[0.15em] text-[var(--text-3)]">
-              Powered by
+            <div className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-2)]">
+              Hackathon Sponsor
             </div>
 
-            <div className="font-semibold text-xs mt-1">
-              DEX-IT GLOBAL
+            <div className="text-xs font-medium mt-1">
+              DEX-IT Global
             </div>
           </div>
         )}

@@ -15,17 +15,22 @@ from src.detection.object_detector import ProhibitedObjectDetector, link_objects
 
 import redis
 import os
+import math
+import numpy as np
 
-from backend.src.core.database import SessionLocal
-from backend.src.models import Event, Student
+from src.core.database import SessionLocal
+from src.models import Event, Student
 
-# Dummy arguments class for BYTETracker init
 class TrackerArgs:
     def __init__(self):
-        self.track_thresh = 0.45
+        self.track_high_thresh = 0.45
+        self.track_low_thresh = 0.1
+        self.new_track_thresh = 0.5
         self.track_buffer = 30
         self.match_thresh = 0.8
         self.gmc_method = 'sparseOptFlow'
+        self.fuse_score = True
+        self.tracker_type = 'bytetrack'
 
 class VideoProcessor:
     def __init__(self, source_id: int, location: str, shared_pose_model, shared_object_model, inference_lock, redis_client):
@@ -37,7 +42,7 @@ class VideoProcessor:
         self.redis_client = redis_client
         
         # Dedicated tracker for this stream
-        self.tracker = BYTETracker(TrackerArgs(), frame_rate=5)
+        self.tracker = BYTETracker(TrackerArgs())
         
         self.behavior_engine = BehaviorEngine()
         self.prohibited_detector = ProhibitedObjectDetector(model_path="yolov8s.pt") # Lightweight
@@ -111,7 +116,7 @@ class VideoProcessor:
             # --- Inference with Shared Models ---
             with self.inference_lock:
                 # Pose Model
-                pose_results = self.pose_model.predict(frame, conf=0.45, imgsz=640, verbose=False, agnostic_nms=True)[0]
+                pose_results = self.pose_model.predict(frame, conf=0.3, classes=[0], imgsz=640, verbose=False, agnostic_nms=True)[0]
                 # Object Model (Lightweight)
                 obj_results = self.object_model.predict(frame, conf=0.25, classes=[67, 73], verbose=False)[0]
                 
@@ -119,32 +124,115 @@ class VideoProcessor:
             
             # Extract detections for Tracker
             if pose_results.boxes is not None and len(pose_results.boxes) > 0:
-                boxes = pose_results.boxes.xyxy.cpu().numpy()
-                confs = pose_results.boxes.conf.cpu().numpy()
-                cls_ids = pose_results.boxes.cls.cpu().numpy()
+                # Update tracking state using pose_results.boxes directly
+                tracks = self.tracker.update(pose_results.boxes, frame)
                 
-                # Format for BYTETracker: [x1, y1, x2, y2, conf, cls]
-                dets = np.column_stack((boxes, confs, cls_ids))
-                
-                # Update tracking state
-                tracks = self.tracker.update(dets, frame)
-                
-                # Mapping original boxes to tracks (approximation based on IoU or we can use the tracker boxes directly)
+                # Mapping original boxes to tracks using IoU
                 track_ids = []
                 track_boxes = []
-                for track in tracks:
-                    track_ids.append(track.track_id)
-                    track_boxes.append(track.tlbr) # [x1, y1, x2, y2]
+                if len(tracks) > 0:
+                    for track in tracks:
+                        if isinstance(track, np.ndarray):
+                            # Ultralytics tracker returns [x1, y1, x2, y2, track_id, conf, cls, ...]
+                            track_ids.append(int(track[4]))
+                            track_boxes.append(track[0:4])
+                        else:
+                            track_ids.append(track.track_id)
+                            track_boxes.append(track.tlbr) # [x1, y1, x2, y2]
                     
-                # We need keypoints mapped to track IDs...
-                # For simplicity, we skip full behaviour engine in this minimal port, 
-                # or just draw bounding boxes. We will just draw the tracking boxes.
+                pose_boxes = []
+                pose_kpts = []
+                if pose_results.boxes is not None and len(pose_results.boxes) > 0:
+                    pose_boxes = pose_results.boxes.xyxy.cpu().numpy()
+                    if hasattr(pose_results, 'keypoints') and pose_results.keypoints is not None:
+                        pose_kpts = pose_results.keypoints.data.cpu().numpy()
+
+                def bb_iou(boxA, boxB):
+                    xA = max(boxA[0], boxB[0])
+                    yA = max(boxA[1], boxB[1])
+                    xB = min(boxA[2], boxB[2])
+                    yB = min(boxA[3], boxB[3])
+                    interArea = max(0, xB - xA) * max(0, yB - yA)
+                    if interArea == 0:
+                        return 0.0
+                    boxAArea = (boxA[2] - boxA[0]) * (boxA[3] - boxA[1])
+                    boxBArea = (boxB[2] - boxB[0]) * (boxB[3] - boxB[1])
+                    return interArea / float(boxAArea + boxBArea - interArea)
+
                 students_data = []
                 for tid, tbox in zip(track_ids, track_boxes):
                     x1, y1, x2, y2 = map(int, tbox)
                     student_str_id = f"source{self.source_id}_student{tid}"
-                    cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
-                    cv2.putText(annotated_frame, f"ID: {tid}", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0), 2)
+                    
+                    best_iou = 0.5
+                    best_kpt = None
+                    for pbox, pkpt in zip(pose_boxes, pose_kpts):
+                        iou = bb_iou(tbox, pbox)
+                        if iou > best_iou:
+                            best_iou = iou
+                            best_kpt = pkpt
+                            
+                    features = {
+                        "timestamp": current_video_time,
+                        "box": [x1, y1, x2, y2]
+                    }
+                    
+                    if best_kpt is not None:
+                        pose_dict = get_head_orientation_and_hand_positions(best_kpt)
+                        features.update(pose_dict)
+                        
+                        features['nose'] = (float(best_kpt[0][0]), float(best_kpt[0][1]))
+                        features['left_shoulder'] = (float(best_kpt[5][0]), float(best_kpt[5][1]))
+                        features['right_shoulder'] = (float(best_kpt[6][0]), float(best_kpt[6][1]))
+                        
+                        ls = features['left_shoulder']
+                        rs = features['right_shoulder']
+                        if ls[0] != 0 and rs[0] != 0:
+                            features['shoulder_angle'] = math.degrees(math.atan2(ls[1] - rs[1], ls[0] - rs[0]))
+                        
+                        if len(self.student_history[tid]) > 0:
+                            prev = self.student_history[tid][-1]
+                            curr_lw = features.get('left_hand', (0,0))
+                            prev_lw = prev.get('left_hand', (0,0))
+                            if curr_lw != (0,0) and prev_lw != (0,0):
+                                dist = math.hypot(curr_lw[0] - prev_lw[0], curr_lw[1] - prev_lw[1])
+                                features['hand_movement'] = float(dist)
+                            else:
+                                features['hand_movement'] = 0.0
+                        else:
+                            features['hand_movement'] = 0.0
+                            
+                    self.student_history[tid].append(features)
+                    
+                    history = list(self.student_history[tid])
+                    detected_behaviors = []
+                    
+                    if len(history) >= 5:
+                        alerts = [
+                            self.behavior_engine.detect_sideward_glances(history),
+                            self.behavior_engine.detect_excessive_head_turns(history),
+                            self.behavior_engine.detect_body_rotation(history),
+                            self.behavior_engine.detect_unusual_hand_movements(history),
+                            self.behavior_engine.detect_nonverbal_communication(history)
+                        ]
+                        
+                        for a in alerts:
+                            if a['detected']:
+                                behavior_name = a['behavior']
+                                alert_key = f"{student_str_id}_{behavior_name}"
+                                if (current_video_time - self.last_logged_time[alert_key]) > self.COOLDOWN:
+                                    self.last_logged_time[alert_key] = current_video_time
+                                    self._trigger_alert(student_str_id, a)
+                                detected_behaviors.append(behavior_name)
+                    
+                    cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (255, 0, 0), 1)
+                    label = f"ID: {tid}"
+                    if features.get('head_orientation') in ["Left", "Right"]:
+                        label += f" | {features['head_orientation']} Glance"
+                    if "body_rotation" in detected_behaviors:
+                        label += " | Body Rotated"
+                        
+                    cv2.putText(annotated_frame, label, (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0), 1)
                     students_data.append({"id": student_str_id, "box": [x1, y1, x2, y2]})
                     
                 # Process objects
@@ -259,9 +347,8 @@ class VideoStreamManager:
         self.pose_model.predict(dummy_frame, verbose=False)
         self.object_model.predict(dummy_frame, verbose=False)
         
-        redis_host = os.environ.get("REDIS_HOST", "localhost")
-        redis_port = int(os.environ.get("REDIS_PORT", "6379"))
-        self.redis_client = redis.Redis(host=redis_host, port=redis_port, db=0)
+        redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379")
+        self.redis_client = redis.Redis.from_url(redis_url)
         
         self.processors: Dict[int, VideoProcessor] = {}
         self.initialized = True
