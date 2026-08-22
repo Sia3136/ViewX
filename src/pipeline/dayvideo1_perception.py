@@ -16,6 +16,124 @@ from src.utils.schemas import BehaviourEvent
 # ====================== CONFIG ======================
 from pathlib import Path
 
+import math
+import numpy as np
+from collections import defaultdict, deque
+
+def _valid(pt):
+    return pt is not None and pt[0] > 0 and pt[1] > 0
+
+def _dist(a, b):
+    return math.hypot(a[0] - b[0], a[1] - b[1])
+
+def _angle_at_vertex(vertex, p1, p2):
+    """Angle at `vertex` formed by points p1-vertex-p2 (degrees)."""
+    if not (_valid(vertex) and _valid(p1) and _valid(p2)):
+        return None
+    a = _dist(vertex, p1)
+    b = _dist(vertex, p2)
+    c = _dist(p1, p2)
+    if a < 1e-6 or b < 1e-6:
+        return None
+    cos_a = (a*a + b*b - c*c) / (2 * a * b)
+    cos_a = max(-1.0, min(1.0, cos_a))
+    return math.degrees(math.acos(cos_a))
+
+def compute_dual_triangle_head_pose(kpts):
+    """
+    Dual-triangle head pose (inspired by Haider et al. 2025).
+    Triangle 1: nose – left_eye – right_eye
+    Triangle 2: nose – left_ear – right_ear
+
+    Returns dict with angles and a simple Left/Right/Center estimate.
+    """
+    nose = kpts[0]
+    left_eye, right_eye = kpts[1], kpts[2]
+    left_ear, right_ear = kpts[3], kpts[4]
+    left_shoulder, right_shoulder = kpts[5], kpts[6]
+
+    # --- Angles at nose ---
+    eye_angle = _angle_at_vertex(nose, left_eye, right_eye)    # smaller when face turns
+    ear_angle = _angle_at_vertex(nose, left_ear, right_ear)
+
+    # --- Side asymmetry (strong signal for left/right turn) ---
+    # Horizontal offset of nose relative to eye midpoint and ear midpoint
+    eye_mid_x = None
+    ear_mid_x = None
+    if _valid(left_eye) and _valid(right_eye):
+        eye_mid_x = (left_eye[0] + right_eye[0]) / 2.0
+    if _valid(left_ear) and _valid(right_ear):
+        ear_mid_x = (left_ear[0] + right_ear[0]) / 2.0
+
+    nose_x = nose[0] if _valid(nose) else None
+
+    eye_offset = (nose_x - eye_mid_x) if (nose_x is not None and eye_mid_x is not None) else 0.0
+    ear_offset = (nose_x - ear_mid_x) if (nose_x is not None and ear_mid_x is not None) else 0.0
+
+    # Shoulder-normalized offset (scale-invariant)
+    shoulder_w = 1.0
+    if _valid(left_shoulder) and _valid(right_shoulder):
+        shoulder_w = max(_dist(left_shoulder, right_shoulder), 1.0)
+
+    norm_eye_offset = eye_offset / shoulder_w
+    norm_ear_offset = ear_offset / shoulder_w
+
+    # Combined turn score: positive → looking right, negative → looking left
+    turn_score = 0.6 * norm_eye_offset + 0.4 * norm_ear_offset
+
+    # Direction label (rough, threshold refined dynamically later)
+    if turn_score > 0.08:
+        direction = "Right"
+    elif turn_score < -0.08:
+        direction = "Left"
+    else:
+        direction = "Center"
+
+    return {
+        "eye_angle": eye_angle,
+        "ear_angle": ear_angle,
+        "norm_eye_offset": norm_eye_offset,
+        "norm_ear_offset": norm_ear_offset,
+        "turn_score": turn_score,
+        "direction": direction,
+        "shoulder_width": shoulder_w,
+    }
+
+# Near top, with other state
+head_score_history = defaultdict(lambda: deque(maxlen=90))  # ~3 sec at 30fps
+DYNAMIC_BASE = 0.12          # base |turn_score| threshold
+DYNAMIC_STD_MULT = 1.5       # how much extra from person's own variation
+
+def get_dynamic_threshold(track_id, turn_score):
+    """
+    Dynamic threshold: person's recent motion + base.
+    Looking at invigilator / natural sway is less likely to cross this.
+    """
+    hist = head_score_history[track_id]
+    hist.append(turn_score)
+
+    if len(hist) < 15:
+        return DYNAMIC_BASE
+
+    arr = np.array(hist)
+    med = np.median(arr)
+    std = np.std(arr)
+
+    # Threshold is distance from this person's typical center
+    thresh = max(DYNAMIC_BASE, abs(med) + DYNAMIC_STD_MULT * std)
+    # Cap so it doesn't become huge
+    thresh = min(thresh, 0.35)
+    return thresh
+
+def is_suspicious_head_turn(track_id, pose_info):
+    score = pose_info["turn_score"]
+    thresh = get_dynamic_threshold(track_id, score)
+    direction = pose_info["direction"]
+
+    if abs(score) >= thresh and direction in ("Left", "Right"):
+        return True, direction, abs(score), thresh
+    return False, direction, abs(score), thresh
+
 def remove_duplicate_tracks(boxes, track_ids, keypoints, iou_thresh=0.45):
     """Keep one track when two boxes overlap a lot (same person, two IDs)"""
     if len(boxes) <= 1:
@@ -71,11 +189,6 @@ def is_looking_towards_invigilator(student_box, head_orientation, invigilator_bo
     return False
 
 def is_likely_invigilator(kpts, box, frame_height):
-    """
-    Balanced check:
-    - Standing invigilator → True
-    - Seated student → False
-    """
     x1, y1, x2, y2 = box
     bbox_height = y2 - y1
     bbox_width = max(x2 - x1, 1)
@@ -96,39 +209,39 @@ def is_likely_invigilator(kpts, box, frame_height):
     ankles_visible = left_ankle[0] > 0 or right_ankle[0] > 0
     knees_visible = left_knee[0] > 0 or right_knee[0] > 0
 
-    # Hip position inside the box (0 = top of box, 1 = bottom)
     if hips_visible:
         hip_y = (left_hip[1] + right_hip[1]) / 2.0
         hip_rel = (hip_y - y1) / max(bbox_height, 1)
     else:
         hip_rel = 0.5
 
-    # ----- Standing signals -----
-    # Standing: taller box, head higher, hips roughly mid-body, legs visible
+    # Strong reject: clearly seated / short in frame
+    if height_ratio < 0.45:
+        return False
+    if head_pos > 0.35 and height_ratio < 0.58:
+        return False
+    if hips_visible and hip_rel > 0.62:
+        return False   # hips low in box → sitting
+
     standing_score = 0
-
-    if height_ratio > 0.52:
+    if height_ratio > 0.55:
         standing_score += 2
-    if height_ratio > 0.45 and aspect > 1.55:
+    if height_ratio > 0.48 and aspect > 1.6:
         standing_score += 1
-    if head_pos < 0.28:
+    if head_pos < 0.25:
+        standing_score += 2
+    if ankles_visible and height_ratio > 0.50:
         standing_score += 1
-    if ankles_visible or knees_visible:
+    if knees_visible and height_ratio > 0.50:
         standing_score += 1
-    if hips_visible and 0.35 <= hip_rel <= 0.60:
-        standing_score += 1   # hips in middle → more standing-like
+    if hips_visible and 0.32 <= hip_rel <= 0.55:
+        standing_score += 1
 
-    # ----- Seated rejection -----
-    # Seated: shorter in frame, head lower, hips lower in box
-    if height_ratio < 0.42:
-        return False
-    if head_pos > 0.40 and height_ratio < 0.55:
-        return False
-    if hips_visible and hip_rel > 0.65 and height_ratio < 0.55:
-        return False   # hips near bottom of box → sitting
+    return standing_score >= 4   # need stronger evidence
 
-    return standing_score >= 3
 invigilator_ids = set()
+invigilator_confirm = {}   # track_id → consecutive standing frames
+sitting_confirm = {}       # track_id → consecutive sitting frames
 invigilator_boxes = []
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -212,6 +325,20 @@ while True:
 
         for box, track_id, kpts in zip(boxes, track_ids, keypoints):
             x1, y1, x2, y2 = map(int, box)
+            standing_now = is_likely_invigilator(kpts, [x1, y1, x2, y2], height)
+
+            if standing_now:
+                invigilator_confirm[track_id] = invigilator_confirm.get(track_id, 0) + 1
+                sitting_confirm[track_id] = 0
+            else:
+                sitting_confirm[track_id] = sitting_confirm.get(track_id, 0) + 1
+                invigilator_confirm[track_id] = 0
+
+            if invigilator_confirm.get(track_id, 0) >= 8:
+                invigilator_ids.add(track_id)
+
+            if track_id in invigilator_ids and sitting_confirm.get(track_id, 0) >= 15:
+                invigilator_ids.discard(track_id)
 
             if track_id in invigilator_ids or is_likely_invigilator(kpts, [x1, y1, x2, y2], height):
                 invigilator_ids.add(track_id)   # lock this ID as invigilator
@@ -278,6 +405,9 @@ while True:
                     student_turns[track_id] += 1
                 last_direction[track_id] = direction
 
+
+            pose_info = compute_dual_triangle_head_pose(kpts)
+            suspicious, direction, abs_score, thresh = is_suspicious_head_turn(track_id, pose_info)
             # Save features (Siya format)
             features = {
                 "timestamp": video_timestamp,
@@ -290,9 +420,22 @@ while True:
                 "right_hand": (int(right_wrist[0]), int(right_wrist[1])),
                 "nose": (int(nose[0]), int(nose[1])),
                 "hand_movement": float(hand_movement),
-                "box": [x1, y1, x2, y2]
+                "box": [x1, y1, x2, y2],
+                "direction": direction,                    # Left / Right / Center
+                "turn_score": pose_info["turn_score"],
+                "eye_angle": pose_info["eye_angle"],
+                "ear_angle": pose_info["ear_angle"],
+                "head_suspicious": suspicious,
+                "dynamic_thresh": thresh,
             }
             student_history[track_id].append(features)
+
+            cv2.putText(
+            annotated_frame,
+            f"Head: {direction} | score={abs_score:.2f}/{thresh:.2f}",
+            (x1, y2 + 18),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1
+)   
 
             # ========== DRAWING ==========
             box_color = (0, 0, 255) if track_id in active_alerts else (0, 255, 0)

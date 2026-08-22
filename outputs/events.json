@@ -1790,5 +1790,261 @@
     "explanation": "Repeated sideward head orientation (5 glances) exceeded temporal thresholds.",
     "timestamp": 39.666666666666664,
     "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.75,
+    "explanation": "Shoulder angle 179.5° exceeded threshold continuously.",
+    "timestamp": 0.6666666666666666,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "3",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.75,
+    "explanation": "Shoulder angle 129.0° exceeded threshold continuously.",
+    "timestamp": 1.0,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "3",
+    "behaviour_type": "Excessive Head Turning",
+    "confidence": 1.0,
+    "explanation": "Detected 5 head direction changes within the rolling window.",
+    "timestamp": 1.1333333333333333,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "Excessive Head Turning",
+    "confidence": 1.0,
+    "explanation": "Detected 5 head direction changes within the rolling window.",
+    "timestamp": 1.3333333333333333,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "3",
+    "behaviour_type": "unusual_hand_movement",
+    "confidence": 0.85,
+    "explanation": "Hand movement exceeded threshold continuously for the required duration.",
+    "timestamp": 4.466666666666667,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.75,
+    "explanation": "Shoulder angle 132.0° exceeded threshold continuously.",
+    "timestamp": 2.3333333333333335,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.75,
+    "explanation": "Shoulder angle 131.0° exceeded threshold continuously.",
+    "timestamp": 8.333333333333334,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "Repeated Side Glances",
+    "confidence": 1.0,
+    "explanation": "Repeated sideward head orientation (4 glances) exceeded temporal thresholds.",
+    "timestamp": 9.666666666666666,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "2",
+    "behaviour_type": "Excessive Head Turning",
+    "confidence": 1.0,
+    "explanation": "Detected 6 head direction changes within the rolling window.",
+    "timestamp": 13.666666666666666,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.75,
+    "explanation": "Shoulder angle 126.7° exceeded threshold continuously.",
+    "timestamp": 14.333333333333334,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "Repeated Side Glances",
+    "confidence": 1.0,
+    "explanation": "Repeated sideward head orientation (5 glances) exceeded temporal thresholds.",
+    "timestamp": 15.666666666666666,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "staring_at_neighbour_paper",
+    "confidence": 0.95,
+    "explanation": "Sustained head turn toward neighbour (100% of time) while looking downward for ~45s.",
+    "timestamp": 18.333333333333332,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "2",
+    "behaviour_type": "Excessive Head Turning",
+    "confidence": 0.7,
+    "explanation": "Detected 8 head direction changes within the rolling window.",
+    "timestamp": 19.666666666666668,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "Repeated Side Glances",
+    "confidence": 0.65,
+    "explanation": "Repeated sideward head orientation (5 glances) exceeded temporal thresholds.",
+    "timestamp": 21.666666666666668,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "staring_at_neighbour_paper",
+    "confidence": 0.95,
+    "explanation": "Sustained head turn toward neighbour (100% of time) while looking downward for ~45s.",
+    "timestamp": 24.333333333333332,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "Repeated Side Glances",
+    "confidence": 0.65,
+    "explanation": "Repeated sideward head orientation (5 glances) exceeded temporal thresholds.",
+    "timestamp": 27.666666666666668,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "2",
+    "behaviour_type": "Repeated Side Glances",
+    "confidence": 0.65,
+    "explanation": "Repeated sideward head orientation (5 glances) exceeded temporal thresholds.",
+    "timestamp": 29.666666666666668,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.75,
+    "explanation": "Shoulder angle 113.4° exceeded threshold continuously.",
+    "timestamp": 30.166666666666668,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "staring_at_neighbour_paper",
+    "confidence": 0.95,
+    "explanation": "Sustained head turn toward neighbour (100% of time) while looking downward for ~45s.",
+    "timestamp": 30.333333333333332,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "Repeated Side Glances",
+    "confidence": 1.0,
+    "explanation": "Repeated sideward head orientation (5 glances) exceeded temporal thresholds.",
+    "timestamp": 33.666666666666664,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.75,
+    "explanation": "Shoulder angle 133.1° exceeded threshold continuously.",
+    "timestamp": 36.166666666666664,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "2",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.75,
+    "explanation": "Shoulder angle 170.8° exceeded threshold continuously.",
+    "timestamp": 38.333333333333336,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "Repeated Side Glances",
+    "confidence": 1.0,
+    "explanation": "Repeated sideward head orientation (5 glances) exceeded temporal thresholds.",
+    "timestamp": 39.666666666666664,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.75,
+    "explanation": "Shoulder angle 131.8° exceeded threshold continuously.",
+    "timestamp": 42.166666666666664,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "Repeated Side Glances",
+    "confidence": 1.0,
+    "explanation": "Repeated sideward head orientation (5 glances) exceeded temporal thresholds.",
+    "timestamp": 45.666666666666664,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.75,
+    "explanation": "Shoulder angle 111.7° exceeded threshold continuously.",
+    "timestamp": 48.166666666666664,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "Repeated Side Glances",
+    "confidence": 1.0,
+    "explanation": "Repeated sideward head orientation (5 glances) exceeded temporal thresholds.",
+    "timestamp": 51.666666666666664,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.75,
+    "explanation": "Shoulder angle 148.2° exceeded threshold continuously.",
+    "timestamp": 54.166666666666664,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "Repeated Side Glances",
+    "confidence": 1.0,
+    "explanation": "Repeated sideward head orientation (5 glances) exceeded temporal thresholds.",
+    "timestamp": 57.666666666666664,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.75,
+    "explanation": "Shoulder angle 141.8° exceeded threshold continuously.",
+    "timestamp": 60.166666666666664,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "Repeated Side Glances",
+    "confidence": 1.0,
+    "explanation": "Repeated sideward head orientation (5 glances) exceeded temporal thresholds.",
+    "timestamp": 63.666666666666664,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.75,
+    "explanation": "Shoulder angle 144.6° exceeded threshold continuously.",
+    "timestamp": 66.16666666666667,
+    "keypoints_snapshot": {}
   }
 ]
