@@ -15,26 +15,38 @@ import math
 
 class BehaviorThresholds:
     # Repeated Sideward Glances
-    HEAD_YAW_OFFSET_THRESHOLD = 20.0
-    HEAD_TURN_MIN_DURATION = 1.5
-    HEAD_GLANCE_WINDOW = 10.0
-    HEAD_GLANCE_COUNT_THRESHOLD = 3
+    # Repeated Sideward Glances
+    # Repeated Sideward Glances
+    HEAD_YAW_OFFSET_THRESHOLD = 22.0
+    HEAD_GLANCE_COUNT_THRESHOLD = 4
+    HEAD_TURN_MIN_DURATION = 1.8
+    HEAD_GLANCE_WINDOW = 12.0
 
-    # Excessive Head Turning
-    EXCESSIVE_TURN_WINDOW = 15.0
+# Excessive Head Turning
     EXCESSIVE_TURN_COUNT_THRESHOLD = 5
+    EXCESSIVE_TURN_WINDOW = 12.0
 
-    # Body Rotation Toward Neighbouring Students
-    SHOULDER_ROTATION_THRESHOLD = 15.0
-    BODY_ROTATION_MIN_DURATION = 3.0
+# Body Rotation
+    SHOULDER_ROTATION_THRESHOLD = 35.0
+    BODY_ROTATION_MIN_DURATION = 6.0
 
-    # Unusual / Repetitive Hand Movements
-    HAND_MOVEMENT_NORMALIZED_THRESHOLD = 0.15  # displacement / shoulder_width
-    HAND_MOVEMENT_MIN_DURATION = 3.0
+# Unusual Hand Movements
+    HAND_MOVEMENT_NORMALIZED_THRESHOLD = 0.18
+    HAND_MOVEMENT_MIN_DURATION = 3.5
 
-    # Possible Non-Verbal Communication Attempts
-    HAND_TO_FACE_NORMALIZED_THRESHOLD = 0.5  # distance / shoulder_width
-    HAND_TO_FACE_MIN_DURATION = 2.0
+# Non-verbal Communication
+    HAND_TO_FACE_NORMALIZED_THRESHOLD = 0.32
+    HAND_TO_FACE_MIN_DURATION = 3.5
+
+# Staring at neighbour's paper
+    STARE_DURATION_THRESHOLD = 45.0          # seconds (use 45 for testing, change to 60 later)
+    STARE_YAW_THRESHOLD = 18.0               # head must be turned
+    STARE_LOOKING_DOWN_RATIO = 0.4           # at least 40% of time looking down
+
+# Non-verbal communication (improved)
+    NONVERBAL_HEAD_TURN_REQUIRED = True      # must be looking sideways
+    HAND_TO_FACE_NORMALIZED_THRESHOLD = 0.30
+    HAND_TO_FACE_MIN_DURATION = 2.5
 
 
 # ==============================================================================
@@ -121,7 +133,7 @@ class BehaviorEngine:
 
     def detect_sideward_glances(self, temporal_features):
         if not temporal_features:
-            return self._create_alert("repeated_sideward_glance", False, 0.0, "No features available.")
+            return self._create_alert("Repeated Side Glances", False, 0.0, "No features available.")
             
         current_time = temporal_features[-1]['timestamp']
         window_start = current_time - self.thresholds.HEAD_GLANCE_WINDOW
@@ -162,18 +174,18 @@ class BehaviorEngine:
         confidence = min(glance_count / max(1, required_count), 1.0) if detected else 0.0
         
         if detected and is_mostly_looking_down:
-            confidence *= 0.7 # Reduce confidence
-            if confidence < 0.5:
+            confidence *= 0.65 # Reduce confidence
+            if confidence<0.65:
                 detected = False
             
         reason = f"Repeated sideward head orientation ({glance_count} glances) exceeded temporal thresholds." if detected else "Normal head movement."
         norm_beh = "looking_down" if is_mostly_looking_down else None
         
-        return self._create_alert("repeated_sideward_glance", detected, confidence, reason, norm_beh)
+        return self._create_alert("Repeated Side Glances", detected, confidence, reason, norm_beh)
 
     def detect_excessive_head_turns(self, temporal_features):
         if not temporal_features:
-            return self._create_alert("excessive_head_turning", False, 0.0, "No features available.")
+            return self._create_alert("Excessive Head Turning", False, 0.0, "No features available.")
             
         current_time = temporal_features[-1]['timestamp']
         window_start = current_time - self.thresholds.EXCESSIVE_TURN_WINDOW
@@ -213,7 +225,7 @@ class BehaviorEngine:
         reason = f"Detected {turn_count} head direction changes within the rolling window." if detected else "Normal head direction changes."
         norm_beh = "looking_down" if is_mostly_looking_down else None
         
-        return self._create_alert("excessive_head_turning", detected, confidence, reason, norm_beh)
+        return self._create_alert("Excessive Head Turning", detected, confidence, reason, norm_beh)
 
     def detect_body_rotation(self, temporal_features):
         if not temporal_features:
@@ -245,7 +257,7 @@ class BehaviorEngine:
         is_mostly_looking_down = (looking_down_count / max(1, valid_frames)) > 0.6 if valid_frames > 0 else False
         
         detected = sustained and has_data
-        confidence = 0.9 if detected else 0.0
+        confidence = 0.75 if detected else 0.0
         
         if detected and is_mostly_looking_down:
             # Looking down often warps shoulder angle calculation
@@ -326,6 +338,7 @@ class BehaviorEngine:
             lw = feat.get('left_hand', (0,0))
             rw = feat.get('right_hand', (0,0))
             shoulder_width = self._get_shoulder_width(feat)
+            orientation = feat.get('head_orientation', 'Center')
             
             valid_frames += 1
             if self._is_stretching(feat):
@@ -336,20 +349,47 @@ class BehaviorEngine:
             
             min_dist = min(dist_l, dist_r)
             norm_dist = min_dist / shoulder_width if shoulder_width > 0 else float('inf')
-            
-            if norm_dist < self.thresholds.HAND_TO_FACE_NORMALIZED_THRESHOLD:
+            hand_near_face = norm_dist < self.thresholds.HAND_TO_FACE_NORMALIZED_THRESHOLD
+            is_looking_sideways = orientation in ["Left", "Right"]
+            if hand_near_face:
                 if proximity_start is None:
                     proximity_start = feat['timestamp']
                 elif (feat['timestamp'] - proximity_start) >= self.thresholds.HAND_TO_FACE_MIN_DURATION:
                     sustained = True
+                    if is_looking_sideways:
+                        turned_while_hand_near += 1
             else:
                 proximity_start = None
+                if norm_dist < self.thresholds.HAND_TO_FACE_NORMALIZED_THRESHOLD:
+                    if proximity_start is None:
+                        proximity_start = feat['timestamp']
+                    elif (feat['timestamp'] - proximity_start) >= self.thresholds.HAND_TO_FACE_MIN_DURATION:
+                        sustained = True
+                else:
+                    proximity_start = None
                 
         is_stretching = (stretch_count / max(1, valid_frames)) > 0.5 if valid_frames > 0 else False
-        
+
+        detected = sustained and turned_while_hand_near >= 3
+        confidence = 0.88 if detected else 0.0
+        norm_beh = None
+
+        if detected and is_stretching:
+            detected = False
+            confidence = 0.0
+            norm_beh = "stretching"
+
+        reason = (
+            "Hand near face while looking toward neighbour for sustained duration."
+            if detected else "Normal hand/face position."
+        )
         detected = sustained
         confidence = 0.90 if detected else 0.0
         norm_beh = None
+        if detected:
+            confidence *= 0.6      # make it less confident
+        if confidence < 0.55:
+            detected = False
         
         if detected and is_stretching:
             detected = False
@@ -359,3 +399,72 @@ class BehaviorEngine:
         reason = "Hands detected in close proximity to the face for a sustained duration." if detected else "Normal hand position."
         
         return self._create_alert("nonverbal_communication", detected, confidence, reason, norm_beh)
+    
+    def detect_staring_at_neighbour_paper(self, temporal_features):
+        if not temporal_features or len(temporal_features) < 10:
+            return self._create_alert("staring_at_neighbour_paper", False, 0.0, "Not enough data.")
+
+        current_time = temporal_features[-1]['timestamp']
+        window_start = current_time - self.thresholds.STARE_DURATION_THRESHOLD
+
+        turned_frames = 0
+        looking_down_frames = 0
+        total_frames = 0
+
+        for feat in temporal_features:
+            if feat['timestamp'] < window_start:
+                continue
+
+            total_frames += 1
+            head_offset = abs(feat.get('head_offset', 0))
+            orientation = feat.get('head_orientation', 'Center')
+
+            is_turned = head_offset > self.thresholds.STARE_YAW_THRESHOLD and orientation in ["Left", "Right"]
+            if is_turned:
+                turned_frames += 1
+
+            if self._is_looking_down(feat):
+                looking_down_frames += 1
+
+        if total_frames == 0:
+            return self._create_alert("staring_at_neighbour_paper", False, 0.0, "No frames in window.")
+
+        turn_ratio = turned_frames / total_frames
+        down_ratio = looking_down_frames / total_frames
+
+    # Must be turned most of the time + reasonably looking down
+        detected = (turn_ratio >= 0.65) and (down_ratio >= self.thresholds.STARE_LOOKING_DOWN_RATIO)
+        confidence = 0.0
+
+        if detected:
+            confidence = min(0.95, 0.55 + turn_ratio * 0.4)
+
+        reason = (
+            f"Sustained head turn toward neighbour ({turn_ratio*100:.0f}% of time) "
+            f"while looking downward for ~{self.thresholds.STARE_DURATION_THRESHOLD:.0f}s."
+            if detected else "No sustained staring detected."
+        )
+
+        return self._create_alert("staring_at_neighbour_paper", detected, confidence, reason)
+
+    def is_likely_invigilator(kpts, box, frame_height):
+    
+        x1, y1, x2, y2 = box
+        bbox_height = y2 - y1
+        height_ratio = bbox_height / frame_height
+
+    # Very tall box → likely standing
+        if height_ratio > 0.55:
+            return True
+
+    # Check if ankles / knees are low and visible (standing)
+    # COCO: 13=left knee, 14=right knee, 15=left ankle, 16=right ankle
+        left_ankle = kpts[15] if len(kpts) > 15 else (0, 0)
+        right_ankle = kpts[16] if len(kpts) > 16 else (0, 0)
+        
+
+        ankles_visible = (left_ankle[0] > 0 or right_ankle[0] > 0)
+        if ankles_visible and height_ratio > 0.42:
+            return True
+
+        return False
