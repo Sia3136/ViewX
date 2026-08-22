@@ -19,6 +19,18 @@ class User(Base):
     role = Column(Enum(RoleEnum), default=RoleEnum.INVIGILATOR, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+class VideoSource(Base):
+    __tablename__ = "video_sources"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    type = Column(String, nullable=False) # e.g., "FILE", "RTSP"
+    location = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="STOPPED") # RUNNING, STOPPED, ERROR
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    events = relationship("Event", back_populates="source")
+
 class Student(Base):
     __tablename__ = "students"
     
@@ -31,6 +43,7 @@ class Event(Base):
     __tablename__ = "events"
     
     id = Column(Integer, primary_key=True, index=True)
+    source_id = Column(Integer, ForeignKey("video_sources.id"), index=True, nullable=False)
     student_id = Column(String, ForeignKey("students.id"), index=True, nullable=False)
     behaviour_type = Column(String, index=True, nullable=False)
     confidence = Column(Float, nullable=False)
@@ -39,6 +52,7 @@ class Event(Base):
     keypoints = Column(JSONB, nullable=True)
     
     student = relationship("Student", back_populates="events")
+    source = relationship("VideoSource", back_populates="events")
 
 class SystemConfig(Base):
     __tablename__ = "settings"

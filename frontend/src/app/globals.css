@@ -1,26 +1,247 @@
 @import "tailwindcss";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/instrument-serif/400.css";
+@import "@fontsource/instrument-serif/400-italic.css";
+@import "@fontsource/geist-mono/400.css";
+@import "@fontsource/geist-mono/500.css";
+
+/* ============================================================
+   EXAMGUARD DESIGN TOKENS
+   ============================================================ */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Light mode -- warm editorial */
+  --bg: #F4F2EB;
+  --surface: #FAF9F5;
+  --surface-2: #E9E7DE;
+  --text: #17201B;
+  --text-2: #68706A;
+  --sage: #587461;
+  --sage-light: #849B88;
+  --blue: #718FA0;
+  --border: rgba(30, 40, 34, 0.12);
+
+  --nav-glass-bg: rgba(250, 250, 245, 0.70);
+  --nav-glass-border: rgba(255, 255, 255, 0.65);
+
+  --amber: #B8873C;
+  --red: #A8564A;
+
+  --grain-opacity: 0.035;
+
+  --radius-card: 18px;
+  --radius-pill: 999px;
+
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #050708;
+  --surface: #0B1113;
+  --surface-2: #101A1C;
+  --text: #EDF2EE;
+  --text-2: #8FA098;
+  --sage: #4F8067;
+  --sage-light: #7DBB98;
+  --blue: #4E9BC5;
+  --border: rgba(160, 200, 190, 0.14);
+
+  --nav-glass-bg: rgba(8, 14, 16, 0.70);
+  --nav-glass-border: rgba(120, 170, 160, 0.18);
+
+  --amber: #D9A552;
+  --red: #C97363;
+
+  --grain-opacity: 0.05;
+
+  --deep-navy: #071522;
+  --dark-green: #071712;
+  --accent-blue: #164D68;
+
+  color-scheme: dark;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-sage: var(--sage);
+  --color-sage-light: var(--sage-light);
+  --color-blue: var(--blue);
+  --color-border: var(--border);
+  --color-amber: var(--amber);
+  --color-red: var(--red);
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Instrument Serif', ui-serif, Georgia, serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--border);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 650ms cubic-bezier(0.4, 0, 0.2, 1), color 650ms cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  min-height: 100vh;
+}
+
+/* ============================================================
+   ATMOSPHERE -- light grain + dot texture (light mode)
+   ============================================================ */
+
+.texture-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+.dot-grid {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: radial-gradient(circle, var(--text-2) 1px, transparent 1px);
+  background-size: 28px 28px;
+  opacity: 0.06;
+}
+
+/* ============================================================
+   ATMOSPHERE -- dark mode command-center gradient field
+   ============================================================ */
+
+.atmosphere-dark {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.atmosphere-dark::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(45% 40% at 15% 10%, rgba(22, 77, 104, 0.35), transparent 60%),
+    radial-gradient(50% 45% at 85% 15%, rgba(79, 128, 103, 0.28), transparent 60%),
+    radial-gradient(55% 50% at 30% 85%, rgba(7, 23, 18, 0.9), transparent 65%),
+    radial-gradient(60% 60% at 90% 90%, rgba(78, 155, 197, 0.18), transparent 60%),
+    linear-gradient(160deg, #050708 0%, #071522 35%, #0a2530 50%, #071712 75%, #050708 100%);
+  animation: driftGradient 32s ease-in-out infinite alternate;
+  filter: blur(60px);
+}
+
+@keyframes driftGradient {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  100% { transform: translate3d(-2%, 2%, 0) scale(1.06); }
+}
+
+.atmosphere-dark::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+/* ============================================================
+   GLASS SURFACES
+   ============================================================ */
+
+.glass {
+  background: var(--nav-glass-bg);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  border: 1px solid var(--nav-glass-border);
+}
+
+.glass-surface {
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: blur(18px) saturate(130%);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  border: 1px solid var(--border);
+}
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+
+.font-serif-italic {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+}
+
+.card-surface {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.breathing-dot {
+  animation: breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 color-mix(in srgb, var(--sage) 55%, transparent); }
+  50% { opacity: 0.65; box-shadow: 0 0 0 6px color-mix(in srgb, var(--sage) 0%, transparent); }
+}
+
+.scanlines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.035) 0px,
+    rgba(255, 255, 255, 0.035) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+::selection {
+  background: color-mix(in srgb, var(--sage) 35%, transparent);
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus states */
+:focus-visible {
+  outline: 2px solid var(--sage-light);
+  outline-offset: 2px;
+  border-radius: 4px;
 }

@@ -9,7 +9,9 @@ from sqlalchemy.orm import Session
 from src.core.database import get_db
 from src.models import User
 
-SECRET_KEY = "dummy_secret_for_hackathon" # In production, use env variables
+import os
+
+SECRET_KEY = os.environ.get("JWT_SECRET", "dummy_secret_for_hackathon") # In production, use env variables
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 

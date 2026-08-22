@@ -114,9 +114,20 @@ datasets/
 # =========================
 # Miscellaneous
 # =========================
+<<<<<<< HEAD
 .DS_Store
 *.mkv
 *.mp4
 *.csv
+.DS_Storenode_modules/
+.next/
+.env
+.env.local
 
 
+=======
+.DS_Storenode_modules/
+.next/
+.env
+.env.local
+>>>>>>> origin/kc
