@@ -48,6 +48,28 @@ def remove_duplicate_tracks(boxes, track_ids, keypoints, iou_thresh=0.45):
     keypoints = keypoints[keep]
     return boxes, track_ids, keypoints
 
+def is_looking_towards_invigilator(student_box, head_orientation, invigilator_boxes):
+    """
+    Returns True if student is looking in the direction of an invigilator.
+    """
+    if not invigilator_boxes or head_orientation == "Center":
+        return False
+
+    sx = (student_box[0] + student_box[2]) / 2.0
+
+    for ib in invigilator_boxes:
+        ix = (ib[0] + ib[2]) / 2.0
+
+        # Student looking left, invigilator is on the left
+        if head_orientation == "Left" and ix < sx - 20:
+            return True
+
+        # Student looking right, invigilator is on the right
+        if head_orientation == "Right" and ix > sx + 20:
+            return True
+
+    return False
+
 def is_likely_invigilator(kpts, box, frame_height):
     """
     Balanced check:
@@ -107,6 +129,7 @@ def is_likely_invigilator(kpts, box, frame_height):
 
     return standing_score >= 3
 invigilator_ids = set()
+invigilator_boxes = []
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 VIDEO_PATH = PROJECT_ROOT / "src" / "data" / "videos" / "Video3.mkv"
@@ -192,6 +215,8 @@ while True:
 
             if track_id in invigilator_ids or is_likely_invigilator(kpts, [x1, y1, x2, y2], height):
                 invigilator_ids.add(track_id)   # lock this ID as invigilator
+                invigilator_boxes.append([x1, y1, x2, y2])
+                active_alerts.pop(track_id, None)
 
         # clear any old student alerts/history
                 if track_id in active_alerts:
@@ -368,6 +393,16 @@ while True:
 
         for detector in detectors:
             result = detector(history_list)
+            behavior_type = result["behavior"]
+
+            if behavior_type == "staring_at_neighbour_paper":
+                latest = history_list[-1]
+                student_box = latest.get("box", [0, 0, 0, 0])
+                head_ori = latest.get("head_orientation", "Center")
+
+                if is_looking_towards_invigilator(student_box, head_ori, invigilator_boxes):
+                    continue
+                
             if result["detected"]:
                 behavior_type = result["behavior"]
                 cooldown_key = (sid, behavior_type)
