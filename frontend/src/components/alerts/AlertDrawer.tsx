@@ -34,7 +34,7 @@ export function AlertDrawer({
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Student" value={alert.studentName} />
+            <Field label="Student" value={alert.studentName || alert.studentId} />
             <Field label="Room" value={alert.room} />
             <Field label="Confidence" value={`${alert.confidence}%`} />
             <Field label="Status" value={alert.status} />
