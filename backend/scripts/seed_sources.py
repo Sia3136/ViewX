@@ -7,11 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from src.models import VideoSource, Base
 
 # Connect to DB
-<<<<<<< HEAD
-DB_URL = os.environ.get("DATABASE_URL", "postgresql://examguard_user:supersecretpassword@localhost:5432/examguard")
-=======
 DB_URL = os.environ.get("DATABASE_URL", "postgresql://examguard_user:examguard_secure_pw_123@localhost:5432/examguard")
->>>>>>> 0754b75 (first addition)
 engine = create_engine(DB_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -35,20 +31,28 @@ def seed_sources():
         {"name": "Camera 8 - Paper from Desk", "type": "FILE", "location": "input videos/Seat No. 12 was seen taking a piece of paper from the desk.mkv"},
     ]
     
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+    
     for v in videos:
-        # Check if exists by name just in case
+        abs_path = os.path.join(project_root, v["location"])
+        
+        # Phase 13: Strong file validation
+        if not os.path.exists(abs_path):
+            print(f"WARNING: Video file not found at {abs_path}")
+            continue
+            
         if not session.query(VideoSource).filter_by(name=v["name"]).first():
             source = VideoSource(
                 name=v["name"],
                 type=v["type"],
-                location=v["location"],
-                status="STOPPED"
+                location=abs_path,
+                status="RUNNING" # Set to RUNNING so the VideoManager starts it
             )
             session.add(source)
             
     session.commit()
     session.close()
-    print("Successfully seeded 8 VideoSources.")
+    print("Successfully seeded VideoSources.")
 
 if __name__ == "__main__":
     seed_sources()

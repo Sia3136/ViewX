@@ -60,13 +60,7 @@ class ConnectionManager:
                 # Handle disconnected clients that weren't cleaned up
                 pass
 
-<<<<<<< HEAD
-manager = ConnectionManager()
-
-@router.websocket("/alerts")
-async def websocket_endpoint(websocket: WebSocket):
-=======
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from fastapi import Query
 from src.core.security import SECRET_KEY, ALGORITHM
 import jwt
 from jwt.exceptions import InvalidTokenError
@@ -88,7 +82,6 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
         await websocket.close(code=1008)
         return
         
->>>>>>> 0754b75 (first addition)
     await manager.connect(websocket)
     try:
         while True:

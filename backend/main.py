@@ -8,11 +8,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
-<<<<<<< HEAD
-from src.api import auth, events, analytics, settings, websockets
-=======
-from src.api import auth, events, analytics, settings, websockets, students
->>>>>>> 0754b75 (first addition)
+from src.api import auth, events, analytics, settings, websockets, students, monitoring
+from src.core.video_manager import VideoStreamManager
+from src.core.database import SessionLocal
+from src.models import VideoSource
 
 app = FastAPI(
     title="Drishti AI ExamGuard API",
@@ -35,10 +34,24 @@ app.include_router(events.router, prefix="/api/events", tags=["events"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
 app.include_router(websockets.router, prefix="/api/ws", tags=["websockets"])
-<<<<<<< HEAD
-=======
 app.include_router(students.router, prefix="/api/students", tags=["students"])
->>>>>>> 0754b75 (first addition)
+app.include_router(monitoring.router, prefix="/api/monitoring", tags=["monitoring"])
+
+@app.on_event("startup")
+def startup_event():
+    # Initialize Video Manager
+    manager = VideoStreamManager()
+    
+    # Start streams for all running video sources
+    db = SessionLocal()
+    try:
+        sources = db.query(VideoSource).filter(VideoSource.status == "RUNNING").all()
+        for source in sources:
+            manager.start_stream(source.id, source.location)
+    except Exception as e:
+        print(f"Error starting video streams: {e}")
+    finally:
+        db.close()
 
 @app.get("/api/health")
 def health_check():
