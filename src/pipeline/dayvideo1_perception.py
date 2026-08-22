@@ -20,6 +20,33 @@ import math
 import numpy as np
 from collections import defaultdict, deque
 
+import cv2
+import os
+
+video_path = "data/videos/Video1.mkv"   # change path
+out_dir = "data/frames_for_labeling"
+os.makedirs(out_dir, exist_ok=True)
+
+cap = cv2.VideoCapture(video_path)
+fps = cap.get(cv2.CAP_PROP_FPS) or 25
+frame_id = 0
+saved = 0
+
+# save 1 frame every 1 second
+interval = int(fps)
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+    if frame_id % interval == 0:
+        cv2.imwrite(f"{out_dir}/vid1_{saved:05d}.jpg", frame)
+        saved += 1
+    frame_id += 1
+
+cap.release()
+print("Saved", saved, "frames")
+
 def _valid(pt):
     return pt is not None and pt[0] > 0 and pt[1] > 0
 
@@ -474,7 +501,8 @@ while True:
                 "dynamic_thresh": thresh,
             }
             student_history[track_id].append(features)
-
+            height_ratio = (y2 - y1) / float(height)
+            features["height_ratio"] = height_ratio
              
 
             # ========== DRAWING ==========
@@ -572,13 +600,15 @@ while True:
             engine.detect_body_rotation,
             engine.detect_unusual_hand_movements,
             engine.detect_nonverbal_communication,
-            engine.detect_staring_at_neighbour_paper
+            engine.detect_staring_at_neighbour_paper,
+            engine.detect_student_standing
             
         ]
 
         for detector in detectors:
             result = detector(history_list)
             behavior_type = result["behavior"]
+            print(f"ALERT t={video_timestamp:.1f}s ID={sid} type={behavior_type} conf={result['confidence']:.2f}")
 
             if behavior_type == "staring_at_neighbour_paper":
                 latest = history_list[-1]
