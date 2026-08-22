@@ -3,17 +3,21 @@ export type Severity = "critical" | "high" | "medium" | "low" | "resolved";
 export interface Alert {
   id: string;
   type: string;
-  severity: Severity;
+  severity: string;
   room: string;
   studentId: string;
-  studentName: string;
-  confidence: number;
+  studentName?: string;
   timestamp: string;
-  description: string;
-  status: "open" | "reviewing" | "resolved" | "dismissed" | "escalated";
+  status: string;
+  confidence: number;
+  description?: string;
   evidence?: string;
+  evidenceImage?: string;
   aiAnalysis?: string;
-  timeline?: { time: string; label: string }[];
+  timeline?: {
+    time: string;
+    label: string;
+  }[];
 }
 
 export interface Detection {

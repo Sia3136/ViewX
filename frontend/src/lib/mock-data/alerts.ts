@@ -10,9 +10,10 @@ export const alerts: Alert[] = [
     studentName: "Rohan Mehta",
     confidence: 94,
     timestamp: "10:38:12",
-    description: "A handheld device was detected near the student's desk during active examination.",
+    description: "The monitoring system detected a mobile device within the student's field of view. The event has been flagged for manual verification.",
     status: "open",
     evidence: "Frame captured at 10:38:12 from Camera 02, Room B.",
+    evidenceImage: "/evidence/alert-001.jpg",
     aiAnalysis: "Object classified as a smartphone with high confidence. Device was visible for approximately 8 seconds before being obscured.",
     timeline: [
       { time: "10:38:12", label: "Object first detected in frame" },
