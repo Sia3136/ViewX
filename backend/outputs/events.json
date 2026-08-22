@@ -1,0 +1,50 @@
+[
+  {
+    "student_id": "1",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.9,
+    "explanation": "Shoulder angle 124.4° exceeded threshold continuously.",
+    "timestamp": 0.8,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "lean_and_look",
+    "confidence": 0.82,
+    "explanation": "Body lean and head turn toward side sustained together.",
+    "timestamp": 0.8,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "repeated_sideward_glance",
+    "confidence": 1.0,
+    "explanation": "Repeated sideward head orientation (3 glances) exceeded temporal thresholds.",
+    "timestamp": 4.8,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "2",
+    "behaviour_type": "repeated_sideward_glance",
+    "confidence": 1.0,
+    "explanation": "Repeated sideward head orientation (3 glances) exceeded temporal thresholds.",
+    "timestamp": 4.8,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "2",
+    "behaviour_type": "Excessive Head Turning",
+    "confidence": 1.0,
+    "explanation": "Detected 5 head direction changes within the rolling window.",
+    "timestamp": 4.88,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "2",
+    "behaviour_type": "sustained_neighbour_gaze",
+    "confidence": 0.83,
+    "explanation": "Head turned toward side 88% and looking down 35% for ~25s.",
+    "timestamp": 4.88,
+    "keypoints_snapshot": {}
+  }
+]

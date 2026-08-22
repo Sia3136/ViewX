@@ -183,6 +183,29 @@ DYNAMIC_STD_MULT = 1.5       # how much extra from person's own variation
 import os
 from datetime import datetime
 
+import cv2, os
+
+VIDEO = "data/videos/Video1.mkv"
+OUT = "dataset/images/train"
+os.makedirs(OUT, exist_ok=True)
+
+cap = cv2.VideoCapture(VIDEO)
+fps = cap.get(cv2.CAP_PROP_FPS) or 25
+interval = int(fps)
+i = saved = 0
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+    if i % interval == 0:
+        cv2.imwrite(f"{OUT}/vid1_{saved:05d}.jpg", frame)
+        saved += 1
+    i += 1
+
+cap.release()
+print("Saved", saved)
+
 os.makedirs("outputs/evidence", exist_ok=True)
 
 def save_evidence(frame, box, student_id, behavior_type, ts):
@@ -350,7 +373,9 @@ invigilator_boxes = []
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 VIDEO_PATH = PROJECT_ROOT / "data" / "videos" / "Video1.mkv"
-OUTPUT_PATH = "outputs/1_output.mp4"
+OUTPUT_PATH = str(PROJECT_ROOT / "outputs" / "day1_output.mp4")
+print("VIDEO_PATH =", VIDEO_PATH)
+print("Exists =", VIDEO_PATH.exists())
 MODEL_NAME = "yolov8s-pose.pt"
 CONFIDENCE = 0.3
 HISTORY_LENGTH = 60
