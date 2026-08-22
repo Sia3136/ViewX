@@ -11,3 +11,6 @@ pydantic-settings
 python-multipart
 redis
 websockets
+ultralytics
+opencv-python
+lap

@@ -57,7 +57,7 @@ export function StudentTable() {
                   className="border-b last:border-b-0 cursor-pointer hover:bg-[var(--surface-2)]/50 transition-colors"
                 >
                   <td className="px-5 py-3 font-mono text-xs text-[var(--text-2)]">{s.id}</td>
-                  <td className="px-5 py-3 font-medium">{s.name}</td>
+                  <td className="px-5 py-3 font-medium">ST - {s.id}</td>
                   <td className="px-5 py-3">{s.room}</td>
                   <td className="px-5 py-3">
                     <span

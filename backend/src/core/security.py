@@ -11,7 +11,9 @@ from src.models import User
 
 import os
 
-SECRET_KEY = os.environ.get("JWT_SECRET", "dummy_secret_for_hackathon") # In production, use env variables
+SECRET_KEY = os.environ.get("JWT_SECRET")
+if not SECRET_KEY or SECRET_KEY == "dummy_secret_for_hackathon":
+    raise ValueError("JWT_SECRET must be set in environment and cannot be the default dummy secret.")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 

@@ -34,13 +34,7 @@ class ProhibitedObjectDetector:
                           bounding box, confidence, and class name.
         """
         # Run inference, filtering only for target classes
-        results = self.model(
-            frame,
-            classes=self.target_classes,
-            conf=conf_threshold,
-            imgsz=1280,
-            verbose=False
-)
+        results = self.model(frame, classes=self.target_classes, conf=conf_threshold, verbose=False)
         
         detected_items = []
         
@@ -53,25 +47,6 @@ class ProhibitedObjectDetector:
                 
                 for box, conf, cls_id in zip(boxes, confs, cls_ids):
                     class_name = self.model.names[cls_id]
-                    x1, y1, x2, y2 = box
-                    width = x2 - x1
-                    height = y2 - y1
-                    area = width * height
-                    aspect_ratio = width / height if height > 0 else 0
-                    if class_name == "cell phone":
-                        # Reject if too big (likely mouse or other object) or weird shape
-                        if area > 8000:          # adjust if needed
-                            continue
-                        if aspect_ratio < 0.4 or aspect_ratio > 2.5:
-                            continue
-                        if conf < 0.30:          # extra confidence check for phone
-                            continue
-
-                    # Filter for book (paper/chit proxy)
-                    if class_name == "book":
-                        if area < 500:           # too small
-                            continue
-
                     detected_items.append({
                         "box": [int(x) for x in box],
                         "confidence": float(conf),
