@@ -1,0 +1,39 @@
+project:
+  name: "DRISHTI AI"
+  problem_statement: "AI-Based Human Behaviour Monitoring"
+  version: "0.1.0"
+
+video:
+  source: 0
+  output_path: "outputs/day1_output.mp4"
+  display: true
+  save_output: true
+  max_width: 1280
+  max_height: 720
+
+models:
+  detector: "models/yolo_detector.pt"
+  pose: "models/pose_model.pt"
+  tracker: "bytetrack"
+
+thresholds:
+  alert_confidence: 0.60
+  minimum_track_confidence: 0.50
+
+logging:
+  json_path: "logs/events.json"
+  csv_path: "logs/events.csv"
+
+privacy:
+  anonymized_student_ids: true
+  store_face_images: false
+  store_face_embeddings: false
+  store_names: false
+  store_roll_numbers: false
+  store_raw_keypoints: true
+  keypoint_decimals: 3
+
+dashboard:
+  title: "DRISHTI AI — Examination Monitoring"
+  refresh_seconds: 1
+  max_events: 100
