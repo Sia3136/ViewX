@@ -330,6 +330,7 @@ class BehaviorEngine:
             
         proximity_start = None
         sustained = False
+        turned_while_hand_near = 0
         stretch_count = 0
         valid_frames = 0
         
