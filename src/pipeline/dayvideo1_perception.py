@@ -4,8 +4,11 @@ import os
 import time
 import numpy as np
 from collections import defaultdict, deque
+<<<<<<< HEAD
 from src.utils.feedback import FeedbackManager
 
+=======
+>>>>>>> 0754b75 (first addition)
 
 from src.behaviour.behaviour import BehaviorEngine
 from src.detection.object_detector import ProhibitedObjectDetector, link_objects_to_students
@@ -13,6 +16,7 @@ from src.alerts.alert import AlertManager
 from src.utils.logger import EventLogger
 from src.utils.schemas import BehaviourEvent
 
+<<<<<<< HEAD
 # ====================== CONFIG ======================
 from pathlib import Path
 
@@ -138,6 +142,20 @@ MODEL_NAME = "yolov8s-pose.pt"
 CONFIDENCE = 0.45
 HISTORY_LENGTH = 60
 
+=======
+alert_logs = []
+alert_cooldown = defaultdict(int)   # keeps alert alive for some frames
+# ====================== FUNCTION ======================
+def get_student_features(student_history, student_turns):
+    pass # Replaced by direct behavior engine calls
+
+# ====================== CONFIG ======================
+VIDEO_PATH = "data/videos/Video1.mkv"
+OUTPUT_PATH = "outputs/day3_output.mp4"
+MODEL_NAME = "yolov8s-pose.pt"
+CONFIDENCE = 0.49
+HISTORY_LENGTH = 60
+>>>>>>> 0754b75 (first addition)
 # ====================================================
 
 SKELETON = [
@@ -165,18 +183,27 @@ out = cv2.VideoWriter(OUTPUT_PATH, cv2.VideoWriter_fourcc(*"mp4v"), fps, (width,
 engine = BehaviorEngine()
 object_detector = ProhibitedObjectDetector()
 alert_manager = AlertManager()
+<<<<<<< HEAD
 event_logger = EventLogger(
     json_path="outputs/events.json",
     csv_path="outputs/events.csv"
 )
+=======
+event_logger = EventLogger()
+>>>>>>> 0754b75 (first addition)
 
 student_history = defaultdict(lambda: deque(maxlen=HISTORY_LENGTH))
 student_turns = defaultdict(int)
 last_direction = {}
 active_alerts = {}
+<<<<<<< HEAD
 alert_cooldown = defaultdict(int)
 
 print("🚀 Pipeline Started...")
+=======
+
+print("🚀 Day 3 Pipeline Started...")
+>>>>>>> 0754b75 (first addition)
 frame_count = 0
 prev_time = time.time()
 
@@ -189,16 +216,23 @@ while True:
     video_timestamp = frame_count / fps
     annotated_frame = frame.copy()
 
+<<<<<<< HEAD
     if frame_count % 2 !=0:
         out.write(annotated_frame)
         continue
 
+=======
+>>>>>>> 0754b75 (first addition)
     results = model.track(
         frame,
         conf=CONFIDENCE,
         persist=True,
         tracker="custom_bytetrack.yaml",
+<<<<<<< HEAD
         imgsz=480,
+=======
+        imgsz=640,
+>>>>>>> 0754b75 (first addition)
         verbose=False,
         agnostic_nms=True
     )
@@ -207,12 +241,16 @@ while True:
         boxes = results[0].boxes.xyxy.cpu().numpy()
         track_ids = results[0].boxes.id.int().cpu().tolist()
         keypoints = results[0].keypoints.xy.cpu().numpy()
+<<<<<<< HEAD
         boxes, track_ids, keypoints = remove_duplicate_tracks(boxes, track_ids, keypoints)
         
+=======
+>>>>>>> 0754b75 (first addition)
 
         for box, track_id, kpts in zip(boxes, track_ids, keypoints):
             x1, y1, x2, y2 = map(int, box)
 
+<<<<<<< HEAD
             if track_id in invigilator_ids or is_likely_invigilator(kpts, [x1, y1, x2, y2], height):
                 invigilator_ids.add(track_id)   # lock this ID as invigilator
                 invigilator_boxes.append([x1, y1, x2, y2])
@@ -239,6 +277,9 @@ while True:
                 continue
 
             # Extract keypoints
+=======
+            # ---------- Extract keypoints ----------
+>>>>>>> 0754b75 (first addition)
             nose = kpts[0]
             left_shoulder = kpts[5]
             right_shoulder = kpts[6]
@@ -249,25 +290,43 @@ while True:
             shoulder_center_x = (left_shoulder[0] + right_shoulder[0]) / 2
             head_offset = nose[0] - shoulder_center_x
 
+<<<<<<< HEAD
             if head_offset > 18:
                 direction = "Right"
             elif head_offset < -18:
+=======
+            if head_offset > 20:
+                direction = "Right"
+            elif head_offset < -20:
+>>>>>>> 0754b75 (first addition)
                 direction = "Left"
             else:
                 direction = "Center"
 
+<<<<<<< HEAD
             # Shoulder Angle
+=======
+            # Body Rotation
+>>>>>>> 0754b75 (first addition)
             shoulder_dx = right_shoulder[0] - left_shoulder[0]
             shoulder_dy = right_shoulder[1] - left_shoulder[1]
             shoulder_angle = np.degrees(np.arctan2(shoulder_dy, shoulder_dx))
 
             # Hand Movement
             hand_movement = 0
+<<<<<<< HEAD
             if track_id in student_history and len(student_history[track_id]) > 3:
                 prev = student_history[track_id][-1]
                 if "left_hand" in prev:
                     lw_dist = np.linalg.norm(left_wrist - np.array(prev["left_hand"]))
                     rw_dist = np.linalg.norm(right_wrist - np.array(prev["right_hand"]))
+=======
+            if track_id in student_history and len(student_history[track_id]) > 5:
+                prev = student_history[track_id][-1]
+                if "left_wrist" in prev:
+                    lw_dist = np.linalg.norm(left_wrist - prev["left_wrist"])
+                    rw_dist = np.linalg.norm(right_wrist - prev["right_wrist"])
+>>>>>>> 0754b75 (first addition)
                     hand_movement = lw_dist + rw_dist
 
             # Turn counting
@@ -278,22 +337,36 @@ while True:
                     student_turns[track_id] += 1
                 last_direction[track_id] = direction
 
+<<<<<<< HEAD
             # Save features (Siya format)
             features = {
                 "timestamp": video_timestamp,
                 "head_orientation": direction,
                 "head_offset": float(head_offset),
                 "shoulder_angle": float(shoulder_angle),
+=======
+            # Save features
+            features = {
+                "timestamp": video_timestamp,
+                "head_orientation": direction,
+                "head_offset": head_offset,
+                "shoulder_angle": shoulder_angle,
+>>>>>>> 0754b75 (first addition)
                 "left_shoulder": (int(left_shoulder[0]), int(left_shoulder[1])),
                 "right_shoulder": (int(right_shoulder[0]), int(right_shoulder[1])),
                 "left_hand": (int(left_wrist[0]), int(left_wrist[1])),
                 "right_hand": (int(right_wrist[0]), int(right_wrist[1])),
                 "nose": (int(nose[0]), int(nose[1])),
+<<<<<<< HEAD
                 "hand_movement": float(hand_movement),
+=======
+                "hand_movement": hand_movement,
+>>>>>>> 0754b75 (first addition)
                 "box": [x1, y1, x2, y2]
             }
             student_history[track_id].append(features)
 
+<<<<<<< HEAD
             # ========== DRAWING ==========
             box_color = (0, 0, 255) if track_id in active_alerts else (0, 255, 0)
             cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), box_color, 2)
@@ -301,6 +374,13 @@ while True:
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, box_color, 2)
 
             # Skeleton
+=======
+            # ---------- Drawing ----------
+            cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.putText(annotated_frame, f"ID: {track_id}", (x1, y1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
+>>>>>>> 0754b75 (first addition)
             for kx, ky in kpts:
                 if kx > 0 and ky > 0:
                     cv2.circle(annotated_frame, (int(kx), int(ky)), 3, (0, 0, 255), -1)
@@ -315,6 +395,7 @@ while True:
                         cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 0), 2)
             cv2.putText(annotated_frame, f"Turns: {student_turns[track_id]}", (x1, y2 + 38),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 255), 2)
+<<<<<<< HEAD
 
             # ========== ALERT DRAWING ==========
             if track_id in active_alerts:
@@ -349,6 +430,32 @@ while True:
         cv2.putText(annotated_frame, obj['class_name'], (obj_x1, obj_y1 - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 165, 255), 2)
 
+=======
+            cv2.putText(annotated_frame, f"Hand Move: {int(hand_movement)}", (x1, y2 + 58),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 150, 0), 2)
+
+            # Show Alert
+                        # Show Alert (better visibility)
+            if track_id in active_alerts:
+                # Draw red background rectangle for alert
+                cv2.rectangle(annotated_frame, (x1, y1 - 55), (x1 + 280, y1 - 25), (0, 0, 255), -1)
+                cv2.putText(annotated_frame, active_alerts[track_id],
+                            (x1 + 5, y1 - 35),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+    # Object detection
+    obj_results = object_detector.detect_objects(frame, conf_threshold=0.25)
+    
+    students_data = [{"id": sid, "box": history[-1]["box"], "left_hand": history[-1].get("left_hand", (0,0)), "right_hand": history[-1].get("right_hand", (0,0))} for sid, history in student_history.items() if history]
+    linked_objects = link_objects_to_students(obj_results, students_data)
+
+    # Object alerts
+    for obj in linked_objects:
+        obj_x1, obj_y1, obj_x2, obj_y2 = obj['box']
+        cv2.rectangle(annotated_frame, (obj_x1, obj_y1), (obj_x2, obj_y2), (0, 165, 255), 2)
+        cv2.putText(annotated_frame, f"{obj['class_name']}", (obj_x1, obj_y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 165, 255), 2)
+        
+>>>>>>> 0754b75 (first addition)
         sid = obj['assigned_student_id']
         if sid != "unassigned":
             cooldown_key = (sid, "prohibited_object")
@@ -356,6 +463,7 @@ while True:
                 event = BehaviourEvent(
                     student_id=str(sid),
                     behaviour_type="prohibited_object",
+<<<<<<< HEAD
                     confidence=obj.get('association_confidence', 0.7),
                     explanation=f"Prohibited {obj['class_name']} detected near Student {sid}.",
                     timestamp=video_timestamp,
@@ -381,11 +489,33 @@ while True:
 
         history_list = list(history)
 
+=======
+                    confidence=obj['association_confidence'],
+                    explanation=f"Prohibited {obj['class_name']} detected near Student {sid}.",
+                    timestamp=video_timestamp,
+                    frame_number=frame_count,
+                    evidence={"object": obj['class_name'], "object_conf": obj['confidence']}
+                )
+                formatted_alert = alert_manager.create_alert(event)
+                if formatted_alert:
+                    event_logger.log_event(formatted_alert)
+                    active_alerts[sid] = alert_manager.format_alert(event)
+                    alert_cooldown[cooldown_key] = int(fps * 3)
+
+    # Behaviour alerts
+    for sid, history in student_history.items():
+        if not history:
+            continue
+            
+        history_list = list(history)
+        
+>>>>>>> 0754b75 (first addition)
         detectors = [
             engine.detect_sideward_glances,
             engine.detect_excessive_head_turns,
             engine.detect_body_rotation,
             engine.detect_unusual_hand_movements,
+<<<<<<< HEAD
             engine.detect_nonverbal_communication,
             engine.detect_staring_at_neighbour_paper
             
@@ -407,16 +537,32 @@ while True:
                 behavior_type = result["behavior"]
                 cooldown_key = (sid, behavior_type)
 
+=======
+            engine.detect_nonverbal_communication
+        ]
+        
+        for detector in detectors:
+            result = detector(history_list)
+            if result["detected"]:
+                behavior_type = result["behavior"]
+                cooldown_key = (sid, behavior_type)
+                
+>>>>>>> 0754b75 (first addition)
                 if alert_cooldown[cooldown_key] <= 0:
                     event = BehaviourEvent(
                         student_id=str(sid),
                         behaviour_type=behavior_type,
                         confidence=result["confidence"],
+<<<<<<< HEAD
                         explanation=result["reason"],
+=======
+                        explanation=f"Observed: {result['reason']}",
+>>>>>>> 0754b75 (first addition)
                         timestamp=video_timestamp,
                         frame_number=frame_count,
                         evidence={}
                     )
+<<<<<<< HEAD
                     if alert_manager.create_alert(event):
                         event_logger.log_event({
                         "student_id": str(event.student_id),
@@ -446,6 +592,23 @@ while True:
             if sid in active_alerts and alert_cooldown[key] <= 0:
                 # Only delete if no other active cooldowns for this student
                 pass
+=======
+                    formatted_alert = alert_manager.create_alert(event)
+                    if formatted_alert:
+                        event_logger.log_event(formatted_alert)
+                        active_alerts[sid] = alert_manager.format_alert(event)
+                        alert_cooldown[cooldown_key] = int(fps * 3)
+
+        # Manage active_alerts expiration
+        if sid in active_alerts:
+            if all(alert_cooldown[(sid, b)] <= 0 for b in ["repeated_sideward_glance", "excessive_head_turning", "body_rotation", "unusual_hand_movement", "nonverbal_communication", "prohibited_object"]):
+                del active_alerts[sid]
+
+    # Decrease all cooldowns
+    for key in list(alert_cooldown.keys()):
+        if alert_cooldown[key] > 0:
+            alert_cooldown[key] -= 1
+>>>>>>> 0754b75 (first addition)
 
     # FPS
     curr_time = time.time()
@@ -455,7 +618,11 @@ while True:
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
     out.write(annotated_frame)
+<<<<<<< HEAD
     cv2.imshow("Exam Monitoring", annotated_frame)
+=======
+    cv2.imshow("Day 3 Pipeline", annotated_frame)
+>>>>>>> 0754b75 (first addition)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
@@ -463,5 +630,10 @@ while True:
 cap.release()
 out.release()
 cv2.destroyAllWindows()
+<<<<<<< HEAD
 print("\n✅ Finished!")
 
+=======
+
+print("\n✅ Finished!")
+>>>>>>> 0754b75 (first addition)

@@ -34,6 +34,7 @@ class ProhibitedObjectDetector:
                           bounding box, confidence, and class name.
         """
         # Run inference, filtering only for target classes
+<<<<<<< HEAD
         results = self.model(
             frame,
             classes=self.target_classes,
@@ -41,6 +42,9 @@ class ProhibitedObjectDetector:
             imgsz=1280,
             verbose=False
 )
+=======
+        results = self.model(frame, classes=self.target_classes, conf=conf_threshold, verbose=False)
+>>>>>>> 0754b75 (first addition)
         
         detected_items = []
         
@@ -53,6 +57,7 @@ class ProhibitedObjectDetector:
                 
                 for box, conf, cls_id in zip(boxes, confs, cls_ids):
                     class_name = self.model.names[cls_id]
+<<<<<<< HEAD
                     x1, y1, x2, y2 = box
                     width = x2 - x1
                     height = y2 - y1
@@ -72,6 +77,8 @@ class ProhibitedObjectDetector:
                         if area < 500:           # too small
                             continue
 
+=======
+>>>>>>> 0754b75 (first addition)
                     detected_items.append({
                         "box": [int(x) for x in box],
                         "confidence": float(conf),

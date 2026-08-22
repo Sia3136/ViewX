@@ -8,7 +8,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
+<<<<<<< HEAD
 from src.api import auth, events, analytics, settings, websockets
+=======
+from src.api import auth, events, analytics, settings, websockets, students
+>>>>>>> 0754b75 (first addition)
 
 app = FastAPI(
     title="Drishti AI ExamGuard API",
@@ -31,6 +35,10 @@ app.include_router(events.router, prefix="/api/events", tags=["events"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
 app.include_router(websockets.router, prefix="/api/ws", tags=["websockets"])
+<<<<<<< HEAD
+=======
+app.include_router(students.router, prefix="/api/students", tags=["students"])
+>>>>>>> 0754b75 (first addition)
 
 @app.get("/api/health")
 def health_check():

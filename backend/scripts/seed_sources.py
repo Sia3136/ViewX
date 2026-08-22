@@ -7,7 +7,11 @@ from sqlalchemy.orm import sessionmaker
 from src.models import VideoSource, Base
 
 # Connect to DB
+<<<<<<< HEAD
 DB_URL = os.environ.get("DATABASE_URL", "postgresql://examguard_user:supersecretpassword@localhost:5432/examguard")
+=======
+DB_URL = os.environ.get("DATABASE_URL", "postgresql://examguard_user:examguard_secure_pw_123@localhost:5432/examguard")
+>>>>>>> 0754b75 (first addition)
 engine = create_engine(DB_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
