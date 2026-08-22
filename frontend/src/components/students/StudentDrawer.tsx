@@ -12,7 +12,7 @@ const riskColor: Record<string, string> = {
 
 export function StudentDrawer({ student, onClose }: { student: Student | null; onClose: () => void }) {
   return (
-    <Drawer open={!!student} onClose={onClose} title={student?.name} subtitle={student ? `${student.id} · ${student.room}` : undefined}>
+    <Drawer open={!!student} onClose={onClose} title={`ST - ${student?.id}`} subtitle={student ? `${student.id} · ${student.room}` : undefined}>
       {student && (
         <div className="flex flex-col gap-6">
           <div className="flex items-center gap-4">
@@ -20,7 +20,7 @@ export function StudentDrawer({ student, onClose }: { student: Student | null; o
               {student.name.split(" ").map((n) => n[0]).join("")}
             </div>
             <div>
-              <div className="font-medium">{student.name}</div>
+              <div className="font-medium">ST - {student.id}</div>
               <div className="text-xs text-[var(--text-2)] font-mono mt-0.5">
                 Monitoring: <span className="capitalize">{student.monitoring}</span>
               </div>

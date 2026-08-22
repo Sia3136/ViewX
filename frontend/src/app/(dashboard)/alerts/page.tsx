@@ -1,95 +1,322 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AlertCircle, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
-import { eventsService } from "@/lib/services/events";
-import { Alert } from "@/lib/types";
+
 import { AlertCard } from "@/components/alerts/AlertCard";
-import { AlertFilters, AlertFilter } from "@/components/alerts/AlertFilters";
 import { AlertDrawer } from "@/components/alerts/AlertDrawer";
+import {
+  AlertFilters,
+  AlertFilter,
+} from "@/components/alerts/AlertFilters";
+
+import { Alert } from "@/lib/types";
+import { eventsService } from "@/lib/services/events";
+import { GlassButton } from "@/components/ui/GlassButton";
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+
   const [filter, setFilter] = useState<AlertFilter>("ALL");
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<Alert | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-    const fetchAlerts = async () => {
-      try {
-        setLoading(true);
-        const data = await eventsService.getEvents();
-        if (mounted) {
-          setAlerts(data);
-          setError(null);
-        }
-      } catch (err) {
-        if (mounted) setError("Failed to load alerts");
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-    fetchAlerts();
-    return () => { mounted = false; };
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // ============================================================
+  // FETCH ALERTS
+  // ============================================================
+
+  const fetchAlerts = useCallback(async () => {
+    try {
+      setError(null);
+
+      const data = await eventsService.getEvents(0, 100);
+
+      setAlerts(data);
+    } catch (err) {
+      console.error("Failed to load alerts:", err);
+
+      setError(
+        "Unable to connect to the alert service. Make sure the backend is running."
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
-  const filtered = useMemo(() => {
-    return alerts.filter((a) => {
-      const matchesFilter =
-        filter === "ALL" ||
-        (filter === "RESOLVED" ? a.status === "resolved" : a.severity === filter.toLowerCase());
-      const q = query.toLowerCase();
-      const matchesQuery =
-        !q || a.studentName.toLowerCase().includes(q) || a.room.toLowerCase().includes(q) || a.type.toLowerCase().includes(q);
-      return matchesFilter && matchesQuery;
+  // Initial load
+  useEffect(() => {
+    fetchAlerts();
+  }, [fetchAlerts]);
+
+  // ============================================================
+  // AUTO REFRESH
+  // ============================================================
+  //
+  // This keeps the Active Alerts page updated when new events
+  // are inserted into the database.
+  //
+  // WebSocket can later replace this polling.
+  //
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchAlerts();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [fetchAlerts]);
+
+  // ============================================================
+  // REFRESH BUTTON
+  // ============================================================
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchAlerts();
+  };
+
+  // ============================================================
+  // FILTER + SEARCH
+  // ============================================================
+
+  const filteredAlerts = useMemo(() => {
+    const q = query.trim().toLowerCase();
+
+    return alerts.filter((alert) => {
+      // Severity filter
+      if (
+        filter !== "ALL" &&
+        filter !== "RESOLVED" &&
+        alert.severity.toUpperCase() !== filter
+      ) {
+        return false;
+      }
+
+      // Resolved filter
+      if (filter === "RESOLVED") {
+        return (
+          alert.status === "resolved" ||
+          alert.status === "dismissed" ||
+          alert.status === "confirm"
+        );
+      }
+
+      // Search
+      if (!q) return true;
+
+      return (
+        alert.type?.toLowerCase().includes(q) ||
+        alert.room?.toLowerCase().includes(q) ||
+        alert.studentId?.toLowerCase().includes(q) ||
+        alert.description?.toLowerCase().includes(q)
+      );
     });
   }, [alerts, filter, query]);
 
-  function updateStatus(alert: Alert, status: Alert["status"]) {
-    setAlerts((prev) => prev.map((a) => (a.id === alert.id ? { ...a, status } : a)));
+  // ============================================================
+  // ACTIONS
+  // ============================================================
+
+  const handleAction = (
+  alert: Alert,
+  action: "confirm" | "dismiss" | "escalate"
+) => {
+  console.log(`Alert ${alert.id}: ${action}`);
+
+  setAlerts((prev) =>
+    prev.map((item) =>
+      item.id === alert.id
+        ? {
+            ...item,
+            status: "resolved",
+          }
+        : item
+    )
+  );
+
+  setSelectedAlert(null);
+};
+
+  // ============================================================
+  // LOADING
+  // ============================================================
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold">Active Alerts</h1>
+
+          <p className="text-sm text-[var(--text-2)] mt-1">
+            Monitoring events detected by the AI system
+          </p>
+        </div>
+
+        <div className="card-surface flex items-center justify-center py-16">
+          <div className="flex items-center gap-3 text-sm text-[var(--text-2)]">
+            <RefreshCw
+              size={16}
+              className="animate-spin"
+            />
+
+            Loading alerts...
+          </div>
+        </div>
+      </div>
+    );
   }
 
+  // ============================================================
+  // ERROR
+  // ============================================================
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold">Active Alerts</h1>
+
+          <p className="text-sm text-[var(--text-2)] mt-1">
+            Monitoring events detected by the AI system
+          </p>
+        </div>
+
+        <div className="card-surface flex flex-col items-center justify-center py-16 text-center">
+          <AlertCircle
+            size={32}
+            className="text-[var(--red)] mb-3"
+          />
+
+          <h2 className="font-medium mb-1">
+            Failed to load alerts
+          </h2>
+
+          <p className="text-sm text-[var(--text-2)] max-w-md mb-5">
+            {error}
+          </p>
+
+          <GlassButton
+            variant="secondary"
+            onClick={handleRefresh}
+          >
+            <RefreshCw size={14} className="mr-2" />
+            Try Again
+          </GlassButton>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================================
+  // MAIN PAGE
+  // ============================================================
+
   return (
-    <div className="max-w-[1200px] mx-auto flex flex-col gap-6 pb-10">
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">Active Alerts</h1>
-        <p className="text-[var(--text-2)] mt-2">Review, dismiss, or escalate AI-flagged events in real time.</p>
-      </motion.div>
+    <div className="space-y-6">
+      {/* HEADER */}
 
-      <AlertFilters active={filter} onChange={setFilter} query={query} onQueryChange={setQuery} />
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold">
+              Active Alerts
+            </h1>
 
-      {loading ? (
-        <div className="text-center py-16 text-[var(--text-2)]">Loading alerts...</div>
-      ) : error ? (
-        <div className="text-center py-16 text-red-500">{error}</div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-[var(--text-2)]">No alerts match your filters.</div>
+            {alerts.length > 0 && (
+              <span className="px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--red)]/10 text-[var(--red)]">
+                {alerts.length}
+              </span>
+            )}
+          </div>
+
+          <p className="text-sm text-[var(--text-2)] mt-1">
+            AI-detected events requiring review
+          </p>
+        </div>
+
+        <GlassButton
+          variant="secondary"
+          onClick={handleRefresh}
+          disabled={refreshing}
+        >
+          <RefreshCw
+            size={14}
+            className={refreshing ? "animate-spin mr-2" : "mr-2"}
+          />
+
+          Refresh
+        </GlassButton>
+      </div>
+
+      {/* FILTERS */}
+
+      <AlertFilters
+        active={filter}
+        onChange={setFilter}
+        query={query}
+        onQueryChange={setQuery}
+      />
+
+      {/* EMPTY STATE */}
+
+      {filteredAlerts.length === 0 ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="card-surface flex flex-col items-center justify-center py-16 text-center"
+        >
+          <div className="w-12 h-12 rounded-full bg-[var(--surface-2)] flex items-center justify-center mb-4">
+            <AlertCircle
+              size={22}
+              className="text-[var(--text-2)]"
+            />
+          </div>
+
+          <h2 className="font-medium">
+            {alerts.length === 0
+              ? "No alerts detected"
+              : "No matching alerts"}
+          </h2>
+
+          <p className="text-sm text-[var(--text-2)] mt-1">
+            {alerts.length === 0
+              ? "The monitoring system has not detected any events yet."
+              : "Try changing the filter or search query."}
+          </p>
+        </motion.div>
       ) : (
+        /* ALERT GRID */
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {filtered.map((alert, i) => (
+          {filteredAlerts.map((alert, index) => (
             <AlertCard
               key={alert.id}
               alert={alert}
-              index={i}
-              onReview={setSelected}
-              onDismiss={(a) => updateStatus(a, "dismissed")}
-              onEscalate={(a) => updateStatus(a, "escalated")}
+              index={index}
+              onReview={(a) => setSelectedAlert(a)}
+              onDismiss={(a) =>
+                handleAction(a, "dismiss")
+              }
+              onEscalate={(a) =>
+                handleAction(a, "escalate")
+              }
             />
           ))}
         </div>
       )}
 
+      {/* DRAWER */}
+
       <AlertDrawer
-        alert={selected}
-        onClose={() => setSelected(null)}
-        onAction={(a, action) => {
-          const statusMap = { confirm: "reviewing", dismiss: "dismissed", escalate: "escalated" } as const;
-          updateStatus(a, statusMap[action]);
-          setSelected(null);
-        }}
+        alert={selectedAlert}
+        onClose={() => setSelectedAlert(null)}
+        onAction={handleAction}
       />
     </div>
   );
