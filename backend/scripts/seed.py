@@ -11,15 +11,15 @@ def seed_admin():
     db = SessionLocal()
     try:
         # Check if admin already exists
-        admin_user = db.query(User).filter(User.username == "admin").first()
+        admin_user = db.query(User).filter(User.username == "Admin").first()
         if admin_user:
             print("Admin user already exists.")
             return
 
-        hashed_password = get_password_hash("1234")
+        hashed_password = get_password_hash("12345")
         
         new_admin = User(
-            username="admin", 
+            username="Admin", 
             password_hash=hashed_password, 
             role=RoleEnum.ADMIN
         )
