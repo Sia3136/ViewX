@@ -372,8 +372,8 @@ sitting_confirm = {}       # track_id → consecutive sitting frames
 invigilator_boxes = []
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-VIDEO_PATH = PROJECT_ROOT / "data" / "videos" / "Video1.mkv"
-OUTPUT_PATH = str(PROJECT_ROOT / "outputs" / "day1_output.mp4")
+VIDEO_PATH = PROJECT_ROOT / "data" / "videos" / "Video4.mkv"
+OUTPUT_PATH = str(PROJECT_ROOT / "outputs" / "day4_output.mp4")
 print("VIDEO_PATH =", VIDEO_PATH)
 print("Exists =", VIDEO_PATH.exists())
 MODEL_NAME = "yolov8s-pose.pt"

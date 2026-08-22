@@ -46,5 +46,125 @@
     "explanation": "Head turned toward side 88% and looking down 35% for ~25s.",
     "timestamp": 4.88,
     "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.9,
+    "explanation": "Shoulder angle 124.4° exceeded threshold continuously.",
+    "timestamp": 0.8,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "lean_and_look",
+    "confidence": 0.82,
+    "explanation": "Body lean and head turn toward side sustained together.",
+    "timestamp": 0.8,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "2",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.9,
+    "explanation": "Shoulder angle 29.3° exceeded threshold continuously.",
+    "timestamp": 2.5,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "2",
+    "behaviour_type": "lean_and_look",
+    "confidence": 0.82,
+    "explanation": "Body lean and head turn toward side sustained together.",
+    "timestamp": 2.5,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "3",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.9,
+    "explanation": "Shoulder angle 26.2° exceeded threshold continuously.",
+    "timestamp": 2.5,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "4",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.9,
+    "explanation": "Shoulder angle 46.0° exceeded threshold continuously.",
+    "timestamp": 2.5,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "4",
+    "behaviour_type": "lean_and_look",
+    "confidence": 0.82,
+    "explanation": "Body lean and head turn toward side sustained together.",
+    "timestamp": 2.5,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "5",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.9,
+    "explanation": "Shoulder angle 176.6° exceeded threshold continuously.",
+    "timestamp": 3.25,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "5",
+    "behaviour_type": "sustained_neighbour_gaze",
+    "confidence": 0.81,
+    "explanation": "Head turned toward side 77% and looking down 38% for ~25s.",
+    "timestamp": 4.0,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "2",
+    "behaviour_type": "repeated_sideward_glance",
+    "confidence": 1.0,
+    "explanation": "Repeated sideward head orientation (3 glances) exceeded temporal thresholds.",
+    "timestamp": 5.25,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "3",
+    "behaviour_type": "repeated_sideward_glance",
+    "confidence": 1.0,
+    "explanation": "Repeated sideward head orientation (3 glances) exceeded temporal thresholds.",
+    "timestamp": 5.25,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "4",
+    "behaviour_type": "repeated_sideward_glance",
+    "confidence": 1.0,
+    "explanation": "Repeated sideward head orientation (3 glances) exceeded temporal thresholds.",
+    "timestamp": 5.25,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.9,
+    "explanation": "Shoulder angle 158.1° exceeded threshold continuously.",
+    "timestamp": 5.5,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "lean_and_look",
+    "confidence": 0.7,
+    "explanation": "Body lean and head turn toward side sustained together.",
+    "timestamp": 7.75,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "8",
+    "behaviour_type": "nonverbal_communication",
+    "confidence": 0.9,
+    "explanation": "Hands detected in close proximity to the face for a sustained duration.",
+    "timestamp": 8.0,
+    "keypoints_snapshot": {}
   }
 ]
