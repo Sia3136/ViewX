@@ -48,6 +48,23 @@ class BehaviorThresholds:
     HAND_TO_FACE_NORMALIZED_THRESHOLD = 0.30
     HAND_TO_FACE_MIN_DURATION = 2.5
 
+# Sustained gaze toward neighbour's paper
+    SUSTAINED_GAZE_DURATION = 25.0      # seconds (use 15 for quick demo test)
+    SUSTAINED_GAZE_TURN_RATIO = 0.60    # fraction of window head must be turned
+    SUSTAINED_GAZE_DOWN_RATIO = 0.35    # fraction looking down
+
+# Combined lean + head turn
+    LEAN_HEAD_SHOULDER_THRESH = 25.0    # degrees
+    LEAN_HEAD_DURATION = 4.0            # seconds both conditions hold
+
+# Reach toward neighbour (desk-to-desk)
+    REACH_DURATION = 2.0
+    REACH_OUTSIDE_BOX_RATIO = 0.5       # wrist far from own body center
+
+# Standing student (non-invigilator)
+    STANDING_HEIGHT_RATIO = 0.55
+    STANDING_MIN_DURATION = 3.0
+
 
 # ==============================================================================
 # 2. BEHAVIOR ENGINE LOGIC
@@ -65,6 +82,71 @@ class BehaviorEngine:
             "reason": reason,
             "normal_behaviour": normal_behaviour
         }
+    def _frac(self, values):
+        return sum(1 for v in values if v) / max(1, len(values))
+
+    def detect_sustained_neighbour_gaze(self, temporal_features):
+        if not temporal_features or len(temporal_features) < 10:
+            return self._create_alert("sustained_neighbour_gaze", False, 0.0, "Not enough data.")
+
+        now = temporal_features[-1]["timestamp"]
+        window_start = now - self.thresholds.SUSTAINED_GAZE_DURATION
+
+        turned, down, total = 0, 0, 0
+        for f in temporal_features:
+            if f["timestamp"] < window_start:
+                continue
+            total += 1
+            ori = f.get("head_orientation", "Center")
+            if ori in ("Left", "Right"):
+                turned += 1
+            if self._is_looking_down(f):
+                down += 1
+
+        if total < 5:
+            return self._create_alert("sustained_neighbour_gaze", False, 0.0, "Insufficient frames.")
+
+        turn_ratio = turned / total
+        down_ratio = down / total
+        detected = (turn_ratio >= self.thresholds.SUSTAINED_GAZE_TURN_RATIO and
+                    down_ratio >= self.thresholds.SUSTAINED_GAZE_DOWN_RATIO)
+
+        conf = 0.0
+        if detected:
+            conf = min(0.95, 0.5 + 0.3 * turn_ratio + 0.2 * down_ratio)
+
+        reason = (f"Head turned toward side {turn_ratio*100:.0f}% and looking down "
+                  f"{down_ratio*100:.0f}% for ~{self.thresholds.SUSTAINED_GAZE_DURATION:.0f}s."
+                  if detected else "No sustained neighbour gaze.")
+        return self._create_alert("sustained_neighbour_gaze", detected, conf, reason)
+
+    def detect_lean_and_look(self, temporal_features):
+        if not temporal_features:
+            return self._create_alert("lean_and_look", False, 0.0, "No features.")
+
+        now = temporal_features[-1]["timestamp"]
+        window_start = now - self.thresholds.LEAN_HEAD_DURATION
+
+        both_hold = True
+        has = False
+        for f in temporal_features:
+            if f["timestamp"] < window_start:
+                continue
+            has = True
+            ori = f.get("head_orientation", "Center")
+            ang = abs(f.get("shoulder_angle", 0.0))
+            if not (ori in ("Left", "Right") and ang >= self.thresholds.LEAN_HEAD_SHOULDER_THRESH):
+                both_hold = False
+                break
+
+        detected = has and both_hold
+        conf = 0.82 if detected else 0.0
+        if detected and self._is_looking_down(temporal_features[-1]):
+            conf *= 0.85
+
+        reason = ("Body lean and head turn toward side sustained together."
+                  if detected else "No combined lean+look.")
+        return self._create_alert("lean_and_look", detected, conf, reason)
 
     def _get_shoulder_width(self, feat):
         ls = feat.get('left_shoulder', (0, 0))
@@ -226,6 +308,32 @@ class BehaviorEngine:
         norm_beh = "looking_down" if is_mostly_looking_down else None
         
         return self._create_alert("Excessive Head Turning", detected, confidence, reason, norm_beh)
+
+    def detect_student_standing(self, temporal_features):
+        if not temporal_features:
+            return self._create_alert("student_standing", False, 0.0, "No features.")
+
+        now = temporal_features[-1]["timestamp"]
+        window_start = now - self.thresholds.STANDING_MIN_DURATION
+
+        tall_frames, total = 0, 0
+        for f in temporal_features:
+            if f["timestamp"] < window_start:
+                continue
+            total += 1
+        # height_ratio must be stored in features from pipeline
+            hr = f.get("height_ratio", 0.0)
+            if hr >= self.thresholds.STANDING_HEIGHT_RATIO:
+                tall_frames += 1
+
+        if total < 3:
+            return self._create_alert("student_standing", False, 0.0, "Not enough data.")
+
+        ratio = tall_frames / total
+        detected = ratio >= 0.7
+        conf = min(0.9, 0.5 + ratio * 0.4) if detected else 0.0
+        reason = "Student appears standing for sustained duration." if detected else "Seated."
+        return self._create_alert("student_standing", detected, conf, reason)
 
     def detect_body_rotation(self, temporal_features):
         if not temporal_features:

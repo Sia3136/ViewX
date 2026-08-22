@@ -5198,5 +5198,133 @@
     "explanation": "Shoulder angle 135.5° exceeded threshold continuously.",
     "timestamp": 2.3333333333333335,
     "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.75,
+    "explanation": "Shoulder angle 135.5° exceeded threshold continuously.",
+    "timestamp": 2.3333333333333335,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.75,
+    "explanation": "Shoulder angle 135.5° exceeded threshold continuously.",
+    "timestamp": 2.3333333333333335,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.75,
+    "explanation": "Shoulder angle 135.5° exceeded threshold continuously.",
+    "timestamp": 2.3333333333333335,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.75,
+    "explanation": "Shoulder angle 143.5° exceeded threshold continuously.",
+    "timestamp": 8.333333333333334,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "Repeated Side Glances",
+    "confidence": 1.0,
+    "explanation": "Repeated sideward head orientation (4 glances) exceeded temporal thresholds.",
+    "timestamp": 8.666666666666666,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.75,
+    "explanation": "Shoulder angle 123.0° exceeded threshold continuously.",
+    "timestamp": 14.333333333333334,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "Repeated Side Glances",
+    "confidence": 1.0,
+    "explanation": "Repeated sideward head orientation (5 glances) exceeded temporal thresholds.",
+    "timestamp": 14.666666666666666,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "staring_at_neighbour_paper",
+    "confidence": 0.95,
+    "explanation": "Sustained head turn toward neighbour (100% of time) while looking downward for ~45s.",
+    "timestamp": 18.333333333333332,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "Repeated Side Glances",
+    "confidence": 0.65,
+    "explanation": "Repeated sideward head orientation (5 glances) exceeded temporal thresholds.",
+    "timestamp": 20.666666666666668,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "3",
+    "behaviour_type": "unusual_hand_movement",
+    "confidence": 0.85,
+    "explanation": "Hand movement exceeded threshold continuously for the required duration.",
+    "timestamp": 21.833333333333332,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "staring_at_neighbour_paper",
+    "confidence": 0.95,
+    "explanation": "Sustained head turn toward neighbour (100% of time) while looking downward for ~45s.",
+    "timestamp": 24.333333333333332,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "3",
+    "behaviour_type": "Repeated Side Glances",
+    "confidence": 1.0,
+    "explanation": "Repeated sideward head orientation (4 glances) exceeded temporal thresholds.",
+    "timestamp": 25.833333333333332,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "Repeated Side Glances",
+    "confidence": 0.65,
+    "explanation": "Repeated sideward head orientation (5 glances) exceeded temporal thresholds.",
+    "timestamp": 26.666666666666668,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "3",
+    "behaviour_type": "unusual_hand_movement",
+    "confidence": 0.85,
+    "explanation": "Hand movement exceeded threshold continuously for the required duration.",
+    "timestamp": 27.833333333333332,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "body_rotation",
+    "confidence": 0.75,
+    "explanation": "Shoulder angle 85.8° exceeded threshold continuously.",
+    "timestamp": 30.166666666666668,
+    "keypoints_snapshot": {}
+  },
+  {
+    "student_id": "1",
+    "behaviour_type": "staring_at_neighbour_paper",
+    "confidence": 0.95,
+    "explanation": "Sustained head turn toward neighbour (100% of time) while looking downward for ~45s.",
+    "timestamp": 30.333333333333332,
+    "keypoints_snapshot": {}
   }
 ]

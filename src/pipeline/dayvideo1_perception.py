@@ -474,7 +474,8 @@ while True:
                 "dynamic_thresh": thresh,
             }
             student_history[track_id].append(features)
-
+            height_ratio = (y2 - y1) / float(height)
+            features["height_ratio"] = height_ratio
              
 
             # ========== DRAWING ==========
@@ -572,13 +573,15 @@ while True:
             engine.detect_body_rotation,
             engine.detect_unusual_hand_movements,
             engine.detect_nonverbal_communication,
-            engine.detect_staring_at_neighbour_paper
+            engine.detect_staring_at_neighbour_paper,
+            engine.detect_student_standing
             
         ]
 
         for detector in detectors:
             result = detector(history_list)
             behavior_type = result["behavior"]
+            print(f"ALERT t={video_timestamp:.1f}s ID={sid} type={behavior_type} conf={result['confidence']:.2f}")
 
             if behavior_type == "staring_at_neighbour_paper":
                 latest = history_list[-1]
