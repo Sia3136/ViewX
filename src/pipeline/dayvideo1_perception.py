@@ -39,6 +39,47 @@ def _angle_at_vertex(vertex, p1, p2):
     cos_a = max(-1.0, min(1.0, cos_a))
     return math.degrees(math.acos(cos_a))
 
+def draw_alert_panel(frame, active_alerts, panel_width=320):
+    """
+    Draw a clean right-side panel with stacked alerts.
+    active_alerts: {student_id: "message string" or dict}
+    """
+    h, w = frame.shape[:2]
+    panel_w = min(panel_width, w // 3)
+
+    # Dark panel background
+    overlay = frame.copy()
+    cv2.rectangle(overlay, (w - panel_w, 0), (w, h), (30, 30, 30), -1)
+    cv2.addWeighted(overlay, 0.75, frame, 0.25, 0, frame)
+
+    # Title
+    cv2.putText(frame, "ALERTS", (w - panel_w + 15, 35),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 200, 255), 2)
+    cv2.line(frame, (w - panel_w + 10, 45), (w - 10, 45), (80, 80, 80), 1)
+
+    y = 75
+    if not active_alerts:
+        cv2.putText(frame, "No active alerts", (w - panel_w + 15, y),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, (180, 180, 180), 1)
+        return frame
+
+    for sid, msg in list(active_alerts.items())[:12]:  # max 12 rows
+        text = f"ID {sid}: {msg}"
+        # wrap long text
+        if len(text) > 42:
+            text = text[:39] + "..."
+
+        # alert row background
+        cv2.rectangle(frame, (w - panel_w + 8, y - 18), (w - 8, y + 8), (0, 0, 180), -1)
+        cv2.putText(frame, text, (w - panel_w + 12, y),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1)
+        y += 32
+
+        if y > h - 20:
+            break
+
+    return frame
+
 def compute_dual_triangle_head_pose(kpts):
     """
     Dual-triangle head pose (inspired by Haider et al. 2025).
@@ -242,16 +283,25 @@ def is_likely_invigilator(kpts, box, frame_height, all_height_ratios=None):
 
     return standing_score >= 3 # need stronger evidence
 
+def is_near_known_invigilator(box, invigilator_centers, max_dist=120):
+    cx = (box[0] + box[2]) / 2.0
+    cy = (box[1] + box[3]) / 2.0
+    for (ix, iy) in invigilator_centers:
+        if abs(cx - ix) < max_dist and abs(cy - iy) < max_dist:
+            return True
+    return False
+
 invigilator_ids = set()
+invigilator_centers = []
 invigilator_confirm = {}   # track_id → consecutive standing frames
 sitting_confirm = {}       # track_id → consecutive sitting frames
 invigilator_boxes = []
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-VIDEO_PATH = PROJECT_ROOT / "src" / "data" / "videos" / "Video6.mkv"
-OUTPUT_PATH = "outputs/5_output.mp4"
+VIDEO_PATH = PROJECT_ROOT / "src" / "data" / "videos" / "Video3.mkv"
+OUTPUT_PATH = "outputs/3_output.mp4"
 MODEL_NAME = "yolov8s-pose.pt"
-CONFIDENCE = 0.45
+CONFIDENCE = 0.3
 HISTORY_LENGTH = 60
 
 # ====================================================
@@ -314,7 +364,7 @@ while True:
         conf=CONFIDENCE,
         persist=True,
         tracker="custom_bytetrack.yaml",
-        imgsz=480,
+        imgsz=960,
         verbose=False,
         agnostic_nms=True
     )
@@ -329,46 +379,37 @@ while True:
 
         for box, track_id, kpts in zip(boxes, track_ids, keypoints):
             x1, y1, x2, y2 = map(int, box)
+            cx = (x1 + x2) / 2.0
+            cy = (y1 + y2) / 2.0
+
+    # ===== INVIGILATOR (hard sticky + position memory) =====
+            near_old = False
+            for (ix, iy) in invigilator_centers:
+                if abs(cx - ix) < 120 and abs(cy - iy) < 120:
+                    near_old = True
+                    break
+
             standing_now = is_likely_invigilator(kpts, [x1, y1, x2, y2], height)
 
-            if standing_now:
-                invigilator_confirm[track_id] = invigilator_confirm.get(track_id, 0) + 1
-                sitting_confirm[track_id] = 0
-            else:
-                sitting_confirm[track_id] = sitting_confirm.get(track_id, 0) + 1
-                invigilator_confirm[track_id] = 0
-
-            if invigilator_confirm.get(track_id, 0) >= 8:
+            if track_id in invigilator_ids or near_old or standing_now:
                 invigilator_ids.add(track_id)
+                invigilator_centers.append((cx, cy))
+                invigilator_centers = invigilator_centers[-5:]  # keep last few
 
-            if track_id in invigilator_ids and sitting_confirm.get(track_id, 0) >= 15:
-                invigilator_ids.discard(track_id)
-
-            if track_id in invigilator_ids or is_likely_invigilator(kpts, [x1, y1, x2, y2], height):
-                invigilator_ids.add(track_id)   # lock this ID as invigilator
-                invigilator_boxes.append([x1, y1, x2, y2])
+        # clear student state
                 active_alerts.pop(track_id, None)
-
-        # clear any old student alerts/history
-                if track_id in active_alerts:
-                    del active_alerts[track_id]
                 if track_id in student_history:
                     student_history[track_id].clear()
 
-                cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (255, 150, 0), 2)
-                cv2.putText(annotated_frame, "Invigilator", (x1, y1 - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 150, 0), 2)
+        # draw only invigilator
+                cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (255, 150, 0), 1)
+                cv2.putText(annotated_frame, "Invigilator", (x1, max(y1 - 6, 12)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 150, 0), 1)
                 continue
-            
+    # ===== END INVIGILATOR =====
 
-            if is_likely_invigilator(kpts, [x1, y1, x2, y2], height):
-                if track_id in active_alerts:
-                    del active_alerts[track_id]
-                cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (173, 216, 230), 2)
-                cv2.putText(annotated_frame, "Invigilator", (x1, y1 - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 150, 0), 2)
-                continue
-
+    # -------- STUDENT code only below this line --------
+    # thin box + ID, features, history, etc.
             # Extract keypoints
             nose = kpts[0]
             left_shoulder = kpts[5]
@@ -434,18 +475,21 @@ while True:
             }
             student_history[track_id].append(features)
 
-            cv2.putText(
-            annotated_frame,
-            f"Head: {direction} | score={abs_score:.2f}/{thresh:.2f}",
-            (x1, y2 + 18),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1
-)   
+             
 
             # ========== DRAWING ==========
             box_color = (0, 0, 255) if track_id in active_alerts else (0, 255, 0)
-            cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), box_color, 2)
-            cv2.putText(annotated_frame, f"ID: {track_id}", (x1, y1 - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, box_color, 2)
+            thickness = 1
+            cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), box_color, thickness)
+            cv2.putText(
+    annotated_frame,
+    f"ID:{track_id}",
+    (x1, max(y1 - 6, 12)),
+    cv2.FONT_HERSHEY_SIMPLEX,
+    0.5,
+    box_color,
+    1
+)
 
             # Skeleton
             for kx, ky in kpts:
@@ -458,10 +502,6 @@ while True:
                     pt2 = (int(kpts[j][0]), int(kpts[j][1]))
                     cv2.line(annotated_frame, pt1, pt2, (255, 255, 0), 2)
 
-            cv2.putText(annotated_frame, f"Head: {direction}", (x1, y2 + 18),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 0), 2)
-            cv2.putText(annotated_frame, f"Turns: {student_turns[track_id]}", (x1, y2 + 38),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 255), 2)
 
             # ========== ALERT DRAWING ==========
             if track_id in active_alerts:
@@ -470,9 +510,7 @@ while True:
                     alert_text = alert_text[:52] + "..."
 
                 (tw, th), _ = cv2.getTextSize(alert_text, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 2)
-                cv2.rectangle(annotated_frame, (x1, y1 - 65), (x1 + tw + 12, y1 - 25), (0, 0, 255), -1)
-                cv2.putText(annotated_frame, alert_text, (x1 + 5, y1 - 40),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 2)
+                
 
     # ========== OBJECT DETECTION ==========
     obj_results = object_detector.detect_objects(frame, conf_threshold=0.28)
@@ -598,6 +636,18 @@ while True:
     curr_time = time.time()
     fps_text = 1 / (curr_time - prev_time + 1e-6)
     prev_time = curr_time
+    cv2.putText(annotated_frame, f"FPS: {int(fps_text)}", (20, 40),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+
+    # Clean alert messages for panel
+    panel_alerts = {}
+    for sid, msg in active_alerts.items():
+        panel_alerts[sid] = str(msg)
+
+    annotated_frame = draw_alert_panel(annotated_frame, panel_alerts, panel_width=300)
+
+# FPS on left (not on panel)
     cv2.putText(annotated_frame, f"FPS: {int(fps_text)}", (20, 40),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
