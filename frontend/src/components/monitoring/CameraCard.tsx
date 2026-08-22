@@ -171,7 +171,7 @@ export function CameraCard({
         onDoubleClick={handleDoubleClick}
         onWheel={handleWheel}
         className={cn(
-          "relative aspect-video overflow-hidden bg-black flex items-center justify-center cursor-pointer",
+          "relative aspect-video overflow-hidden bg-[var(--surface-2)] flex items-center justify-center cursor-pointer",
           isFullscreen && "aspect-auto h-screen w-screen"
         )}
       >

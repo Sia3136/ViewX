@@ -2,48 +2,143 @@
 
 import { motion } from "framer-motion";
 import { Detection } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
-const severityColor: Record<Detection["severity"], string> = {
-  normal: "var(--sage-light)",
-  warning: "var(--amber)",
-  critical: "var(--red)",
-};
+function getDetectionStyles(type?: string) {
+  const value = (type || "").toLowerCase();
 
-export function DetectionOverlay({ detection, index }: { detection: Detection; index: number }) {
-  const color = severityColor[detection.severity];
+  if (
+    value.includes("critical") ||
+    value.includes("phone") ||
+    value.includes("mobile") ||
+    value.includes("cheating")
+  ) {
+    return {
+      border: "border-red-400",
+      bg: "bg-red-500/15",
+      label: "bg-red-500/90",
+      text: "text-white",
+      glow: "shadow-[0_0_18px_rgba(239,68,68,0.45)]",
+    };
+  }
+
+  if (
+    value.includes("high") ||
+    value.includes("multiple") ||
+    value.includes("person")
+  ) {
+    return {
+      border: "border-orange-400",
+      bg: "bg-orange-500/12",
+      label: "bg-orange-500/90",
+      text: "text-white",
+      glow: "shadow-[0_0_18px_rgba(249,115,22,0.4)]",
+    };
+  }
+
+  if (
+    value.includes("medium") ||
+    value.includes("looking") ||
+    value.includes("attention")
+  ) {
+    return {
+      border: "border-amber-400",
+      bg: "bg-amber-500/12",
+      label: "bg-amber-500/90",
+      text: "text-white",
+      glow: "shadow-[0_0_18px_rgba(245,158,11,0.35)]",
+    };
+  }
+
+  return {
+    border: "border-sky-400",
+    bg: "bg-sky-500/10",
+    label: "bg-sky-500/90",
+    text: "text-white",
+    glow: "shadow-[0_0_18px_rgba(14,165,233,0.3)]",
+  };
+}
+
+export function DetectionOverlay({
+  detection,
+  index = 0,
+}: {
+  detection: Detection;
+  index?: number;
+}) {
+  const styles = getDetectionStyles(
+    detection.label || detection.type || detection.className
+  );
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.85 }}
+      initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.4, delay: index * 0.12, ease: [0.16, 1, 0.3, 1] }}
-      className="absolute"
+      transition={{
+        duration: 0.25,
+        delay: index * 0.04,
+      }}
+      className={cn(
+        "absolute pointer-events-none",
+        "border-2 rounded-md",
+        styles.border,
+        styles.bg,
+        styles.glow
+      )}
       style={{
         left: `${detection.x}%`,
         top: `${detection.y}%`,
-        width: `${detection.w}%`,
-        height: `${detection.h}%`,
+        width: `${detection.width}%`,
+        height: `${detection.height}%`,
       }}
     >
-      <motion.div
-        className="w-full h-full rounded-[3px]"
-        style={{ border: `1.5px solid ${color}` }}
-        animate={{ boxShadow: [`0 0 0px ${color}`, `0 0 10px ${color}`, `0 0 0px ${color}`] }}
-        transition={{ duration: 1.6, delay: 0.5 + index * 0.12, ease: "easeInOut" }}
+      {/* corner accents */}
+      <span
+        className={cn(
+          "absolute -top-[2px] -left-[2px] w-3 h-3 border-l-2 border-t-2",
+          styles.border
+        )}
       />
-      <motion.div
-        initial={{ opacity: 0, x: -6 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.3, delay: 0.25 + index * 0.12 }}
-        className="absolute -top-5 left-0 flex items-center gap-1 whitespace-nowrap"
+
+      <span
+        className={cn(
+          "absolute -top-[2px] -right-[2px] w-3 h-3 border-r-2 border-t-2",
+          styles.border
+        )}
+      />
+
+      <span
+        className={cn(
+          "absolute -bottom-[2px] -left-[2px] w-3 h-3 border-l-2 border-b-2",
+          styles.border
+        )}
+      />
+
+      <span
+        className={cn(
+          "absolute -bottom-[2px] -right-[2px] w-3 h-3 border-r-2 border-b-2",
+          styles.border
+        )}
+      />
+
+      {/* Detection label */}
+      <div
+        className={cn(
+          "absolute -top-6 left-0 px-2 py-1 rounded-md",
+          "text-[9px] font-mono font-semibold uppercase tracking-wide",
+          "backdrop-blur-md whitespace-nowrap",
+          styles.label,
+          styles.text
+        )}
       >
-        <span
-          className="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded-sm tracking-wide"
-          style={{ background: color, color: "#0a0f0c" }}
-        >
-          {detection.label} · {detection.confidence}%
-        </span>
-      </motion.div>
+        {detection.label || detection.type || "Detection"}
+
+        {detection.confidence !== undefined && (
+          <span className="ml-1 opacity-80">
+            {Math.round(detection.confidence)}%
+          </span>
+        )}
+      </div>
     </motion.div>
   );
 }
