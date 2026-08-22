@@ -2,17 +2,23 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from src.models import VideoSource, Base
+# Set environment variable before any imports that depend on database.py
+if "DATABASE_URL" not in os.environ:
+    os.environ["DATABASE_URL"] = "postgresql://examguard_user:examguard_secure_pw_123@localhost:5435/examguard"
 
-# Connect to DB
-DB_URL = os.environ.get("DATABASE_URL", "postgresql://examguard_user:examguard_secure_pw_123@localhost:5432/examguard")
-engine = create_engine(DB_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+from src.core.database import SessionLocal
+from src.models import VideoSource
 
 def seed_sources():
     session = SessionLocal()
+    
+    # Sync the sequence to prevent duplicate key errors from manual Alembic seeds
+    try:
+        session.execute("SELECT setval('video_sources_id_seq', COALESCE((SELECT MAX(id) FROM video_sources), 0) + 1, false)")
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        print(f"Sequence sync skipped or failed: {e}")
     
     # Check if we already have these sources (beyond the legacy one created in migration)
     existing = session.query(VideoSource).filter(VideoSource.id > 1).count()

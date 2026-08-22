@@ -3,9 +3,9 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List
 
-from backend.src.core.database import get_db
-from backend.src.models import VideoSource
-from backend.src.core.video_manager import VideoStreamManager
+from src.core.database import get_db
+from src.models import VideoSource
+from src.core.video_manager import VideoStreamManager
 
 router = APIRouter()
 

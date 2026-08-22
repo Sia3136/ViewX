@@ -58,4 +58,6 @@ def health_check():
     return {"status": "healthy"}
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    import os
+    in_docker = os.path.exists("/.dockerenv")
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=not in_docker)

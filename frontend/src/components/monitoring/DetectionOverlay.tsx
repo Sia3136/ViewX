@@ -67,7 +67,7 @@ export function DetectionOverlay({
   index?: number;
 }) {
   const styles = getDetectionStyles(
-    detection.label || detection.type || detection.className
+    detection.label
   );
 
   return (
@@ -88,8 +88,8 @@ export function DetectionOverlay({
       style={{
         left: `${detection.x}%`,
         top: `${detection.y}%`,
-        width: `${detection.width}%`,
-        height: `${detection.height}%`,
+        width: `${detection.w}%`,
+        height: `${detection.h}%`,
       }}
     >
       {/* corner accents */}
@@ -131,7 +131,7 @@ export function DetectionOverlay({
           styles.text
         )}
       >
-        {detection.label || detection.type || "Detection"}
+        {detection.label || "Detection"}
 
         {detection.confidence !== undefined && (
           <span className="ml-1 opacity-80">
