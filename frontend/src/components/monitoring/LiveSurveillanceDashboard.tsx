@@ -80,8 +80,8 @@ export default function LiveSurveillanceDashboard() {
           // Only show HIGH and CRITICAL in the live feed
           if (normalizedAlert.severity === 'high' || normalizedAlert.severity === 'critical') {
             setAlerts((prev) => {
-              if (prev.some(a => a.id === normalizedAlert.id)) return prev;
-              return [normalizedAlert, ...prev].slice(0, 100);
+              const filtered = prev.filter(a => a.id !== normalizedAlert.id);
+              return [normalizedAlert, ...filtered].slice(0, 100);
             });
             
             // Briefly pulse camera border
@@ -362,9 +362,9 @@ export default function LiveSurveillanceDashboard() {
               No critical alerts detected yet.
             </div>
           ) : (
-            alerts.map((alert) => (
+            alerts.filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i).map((alert, idx) => (
               <div 
-                key={alert.id}
+                key={`${alert.id}-${idx}`}
                 onClick={() => handleAlertClick(alert)}
                 style={{
                   backgroundColor: 'var(--surface)', padding: '12px', borderRadius: '8px',
