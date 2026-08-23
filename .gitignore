@@ -1,4 +1,15 @@
 __pycache__/
 *.pyc
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.jpg
+*.jpeg
+*.png
+*.csv
+*.log
+*.json
 backend/outputs/
 backend/outputs/evidence/
+outputs/
