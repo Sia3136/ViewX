@@ -2,6 +2,7 @@
 
 import { Drawer } from "@/components/ui/Drawer";
 import { Student } from "@/lib/types";
+import { User } from "lucide-react";
 import { motion } from "framer-motion";
 
 const riskColor: Record<string, string> = {
@@ -17,7 +18,7 @@ export function StudentDrawer({ student, onClose }: { student: Student | null; o
         <div className="flex flex-col gap-6">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-full bg-[var(--sage)] text-white flex items-center justify-center text-lg font-semibold">
-              {student.name.split(" ").map((n) => n[0]).join("")}
+              <User size={24} />
             </div>
             <div>
               <div className="font-medium">Person - {student.id}</div>

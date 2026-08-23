@@ -129,7 +129,7 @@ export function StudentTable() {
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
-    return computedStudents.filter((s) => !q || s.name.toLowerCase().includes(q) || s.room.toLowerCase().includes(q) || s.id.toLowerCase().includes(q));
+    return computedStudents.filter((s) => !q || s.room.toLowerCase().includes(q) || s.id.toLowerCase().includes(q));
   }, [query, computedStudents]);
 
   return (
@@ -153,7 +153,6 @@ export function StudentTable() {
             <thead>
               <tr className="text-left text-xs text-[var(--text-2)] border-b">
                 <th className="font-medium px-5 py-3">Person ID</th>
-                <th className="font-medium px-5 py-3">Name</th>
                 <th className="font-medium px-5 py-3">Room</th>
                 <th className="font-medium px-5 py-3">Monitoring</th>
                 <th className="font-medium px-5 py-3">Alerts</th>
@@ -164,7 +163,7 @@ export function StudentTable() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-[var(--text-2)]">
+                  <td colSpan={6} className="px-5 py-10 text-center text-[var(--text-2)]">
                     {loading ? "Loading tracking data..." : "No persons detected or tracked yet."}
                   </td>
                 </tr>
@@ -178,8 +177,7 @@ export function StudentTable() {
                     onClick={() => setSelected(s)}
                     className="border-b last:border-b-0 cursor-pointer hover:bg-[var(--surface-2)]/50 transition-colors"
                   >
-                    <td className="px-5 py-3 font-mono text-xs text-[var(--text-2)]">{s.id}</td>
-                    <td className="px-5 py-3 font-medium">Person - {s.id}</td>
+                    <td className="px-5 py-3 font-mono text-xs text-[var(--text-2)]">Person - {s.id}</td>
                     <td className="px-5 py-3">{s.room}</td>
                     <td className="px-5 py-3">
                       <span
