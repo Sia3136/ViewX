@@ -107,8 +107,9 @@ export function StudentTable() {
           room: alert.room,
           monitoring: alert.severity === 'critical' || alert.severity === 'high' ? 'flagged' : 'active',
           alerts: 0,
-          risk: alert.severity, 
-          lastActivity: alert.timestamp
+          risk: alert.severity as "low" | "medium" | "high" | "critical", 
+          lastActivity: alert.timestamp,
+          avatarSeed: sid
         });
       }
       
@@ -118,7 +119,7 @@ export function StudentTable() {
       // Upgrade risk if this alert is higher severity
       const severities = { critical: 4, high: 3, medium: 2, low: 1 };
       if (severities[alert.severity as keyof typeof severities] > severities[s.risk as keyof typeof severities]) {
-          s.risk = alert.severity;
+          s.risk = alert.severity as "low" | "medium" | "high" | "critical";
           s.monitoring = alert.severity === 'critical' || alert.severity === 'high' ? 'flagged' : 'active';
       }
     });

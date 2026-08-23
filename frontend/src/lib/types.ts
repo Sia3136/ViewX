@@ -50,7 +50,7 @@ export interface Student {
   room: string;
   monitoring: "active" | "paused" | "flagged";
   alerts: number;
-  risk: "low" | "medium" | "high";
+  risk: "low" | "medium" | "high" | "critical";
   lastActivity: string;
   avatarSeed: string;
 }
