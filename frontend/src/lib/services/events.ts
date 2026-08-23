@@ -27,12 +27,12 @@ export const normalizeEvent = (backendEvent: BackendEvent): Alert => {
     severity: normalizeSeverity(backendEvent.confidence),
     room: "Unassigned", // Room data unavailable from current backend schema
     studentId: backendEvent.student_id,
-    studentName: `Student ${backendEvent.student_id.replace('student_', '')}`, // Derived name
+    studentName: backendEvent.student_id, // Derived name
     confidence: Math.round(backendEvent.confidence * 100), // Convert to 0-100%
     timestamp: new Date(backendEvent.timestamp).toLocaleTimeString("en-US", { hour12: false }),
     description: backendEvent.explanation,
     status: "open",
-    evidence: "",
+    evidence: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/static/snapshots/event_${backendEvent.id}.jpg`,
     aiAnalysis: `AI detected ${backendEvent.behaviour_type} with ${Math.round(backendEvent.confidence * 100)}% confidence.`,
     timeline: [
       { time: new Date(backendEvent.timestamp).toLocaleTimeString(), label: "Event recorded in system" }

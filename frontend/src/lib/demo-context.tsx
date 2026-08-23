@@ -56,8 +56,11 @@ export function DemoModeProvider({ children }: { children: React.ReactNode }) {
         }
       };
 
-      ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
+      ws.onerror = (error: any) => {
+        // Only log if it's a meaningful error, browsers often fire empty {} on normal disconnects
+        if (error && error.message) {
+          console.error("WebSocket error:", error.message);
+        }
       };
 
       ws.onclose = () => {

@@ -96,6 +96,12 @@ export default function LiveSurveillanceDashboard() {
         }
       };
 
+      ws.onerror = (error: any) => {
+        if (error && error.message) {
+          console.error("WebSocket error in LiveDashboard:", error.message);
+        }
+      };
+
       ws.onclose = () => {
         setTimeout(connectWebSocket, 5000);
       };

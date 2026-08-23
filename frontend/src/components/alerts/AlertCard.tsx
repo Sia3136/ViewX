@@ -9,6 +9,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 
+import { useState } from "react";
 import { Alert } from "@/lib/types";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { cn } from "@/lib/utils";
@@ -107,6 +108,7 @@ export function AlertCard({
   alert: Alert;
   onClick?: () => void;
 }) {
+  const [imgError, setImgError] = useState(false);
   const styles = getSeverityStyles(alert.severity);
   const explanation = getAlertExplanation(alert);
 
@@ -117,6 +119,7 @@ export function AlertCard({
    * Later we can standardize this to alert.evidenceImage.
    */
   const evidenceImage =
+    alert.evidence ||
     (alert as any).evidenceImage ||
     (alert as any).evidence_image ||
     (alert as any).snapshot ||
@@ -180,9 +183,7 @@ export function AlertCard({
 
                   <span>{alert.room}</span>
 
-                  <span className="opacity-40">•</span>
-
-                  <span>Student {alert.studentId}</span>
+                  <span>{alert.studentId}</span>
                 </div>
               </div>
 
@@ -215,12 +216,13 @@ export function AlertCard({
                 </span>
               </div>
 
-              {evidenceImage ? (
+              {evidenceImage && !imgError ? (
                 <div className="relative overflow-hidden rounded-xl border border-[var(--border)] bg-black/5 dark:bg-white/5">
                   <img
                     src={evidenceImage}
                     alt={`Evidence captured at ${alert.timestamp}`}
                     className="w-full h-44 object-cover"
+                    onError={() => setImgError(true)}
                   />
 
                   {/* Camera overlay */}

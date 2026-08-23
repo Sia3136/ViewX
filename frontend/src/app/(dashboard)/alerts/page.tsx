@@ -12,7 +12,7 @@ import {
 } from "@/components/alerts/AlertFilters";
 
 import { Alert } from "@/lib/types";
-import { eventsService } from "@/lib/services/events";
+import { eventsService, normalizeEvent, BackendEvent } from "@/lib/services/events";
 import { GlassButton } from "@/components/ui/GlassButton";
 
 export default function AlertsPage() {
@@ -36,7 +36,20 @@ export default function AlertsPage() {
 
       const data = await eventsService.getEvents(0, 100);
 
-      setAlerts(data);
+      // Deduplicate by ID to prevent React key errors
+      const uniqueData = data.filter(
+        (alert, index, self) =>
+          index === self.findIndex((a) => a.id === alert.id)
+      );
+
+      setAlerts((prev) => {
+        // Merge fetched data with any new WebSocket alerts that might have arrived during the fetch
+        const combined = [...prev, ...uniqueData];
+        return combined.filter(
+          (alert, index, self) =>
+            index === self.findIndex((a) => a.id === alert.id)
+        );
+      });
     } catch (err) {
       console.error("Failed to load alerts:", err);
 
@@ -55,21 +68,56 @@ export default function AlertsPage() {
   }, [fetchAlerts]);
 
   // ============================================================
-  // AUTO REFRESH
+  // AUTO REFRESH (WEBSOCKET)
   // ============================================================
   //
-  // This keeps the Active Alerts page updated when new events
-  // are inserted into the database.
-  //
-  // WebSocket can later replace this polling.
+  // This keeps the Active Alerts page updated in real-time.
   //
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchAlerts();
-    }, 5000);
+    let ws: WebSocket;
+    let reconnectTimer: NodeJS.Timeout;
 
-    return () => clearInterval(interval);
+    const connectWebSocket = () => {
+      const token = localStorage.getItem("access_token");
+      const baseUrl = process.env.NEXT_PUBLIC_WS_URL || (typeof window !== "undefined" ? `ws://${window.location.hostname}:8080` : "ws://localhost:8080");
+      const wsUrl = token
+        ? `${baseUrl}/api/ws/alerts?token=${token}`
+        : `${baseUrl}/api/ws/alerts`;
+        
+      ws = new WebSocket(wsUrl);
+
+      ws.onmessage = (event) => {
+        try {
+          const rawData: BackendEvent = JSON.parse(event.data);
+          const newAlert = normalizeEvent(rawData);
+          
+          // Prepend the new alert to the state instantly (avoiding duplicates)
+          setAlerts((prev) => {
+            if (prev.some((a) => a.id === newAlert.id)) return prev;
+            return [newAlert, ...prev];
+          });
+        } catch (error) {
+          console.error("WebSocket message parsing error:", error);
+        }
+      };
+
+      ws.onerror = (error: any) => {
+        if (error && error.message) {
+          console.error("WebSocket error in AlertsPage:", error.message);
+        }
+      };
+
+      ws.onclose = () => {
+        reconnectTimer = setTimeout(connectWebSocket, 5000);
+      };
+    };
+
+    connectWebSocket();
+    return () => {
+      if (ws) ws.close();
+      clearTimeout(reconnectTimer);
+    };
   }, [fetchAlerts]);
 
   // ============================================================

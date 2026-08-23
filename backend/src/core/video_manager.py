@@ -282,10 +282,8 @@ class VideoProcessor:
                                     'reason': f"Detected {obj['class_name']}"
                                 }
                                 self._trigger_alert(assigned_id, alert)
-                        elif assigned_id and self.alert_states[assigned_id].get(behavior_name):
-                             # To keep it simple, objects only clear when they go missing from linking, 
-                             # which we'd handle globally. For now, rely on object presence.
-                             pass
+                            # To keep it simple, objects only clear when they go missing from linking, 
+                            # which we'd handle globally. For now, rely on object presence.
                                 
                         # Draw objects
                         x1, y1, x2, y2 = obj['box']
@@ -301,17 +299,7 @@ class VideoProcessor:
             time.sleep(sleep_time)
 
     def _trigger_alert(self, student_id: str, alert: dict):
-        event_payload = {
-            'source_id': self.source_id,
-            'student_id': student_id,
-            'behaviour_type': alert['behavior'],
-            'confidence': alert['confidence'],
-            'explanation': alert['reason'],
-            'timestamp': str(datetime.now())
-        }
-        self.redis_client.publish('alerts', json.dumps(event_payload))
-        
-        # Save to DB
+        # Save to DB first to get the auto-generated ID
         try:
             db = SessionLocal()
             # Ensure student exists
@@ -330,6 +318,25 @@ class VideoProcessor:
             )
             db.add(db_event)
             db.commit()
+            db.refresh(db_event)
+            
+            # Save snapshot
+            if self.annotated_frame is not None:
+                os.makedirs("outputs/snapshots", exist_ok=True)
+                snapshot_filename = f"outputs/snapshots/event_{db_event.id}.jpg"
+                cv2.imwrite(snapshot_filename, self.annotated_frame)
+            
+            event_payload = {
+                'id': db_event.id,
+                'source_id': self.source_id,
+                'student_id': student_id,
+                'behaviour_type': alert['behavior'],
+                'confidence': alert['confidence'],
+                'explanation': alert['reason'],
+                'timestamp': str(db_event.timestamp)
+            }
+            self.redis_client.publish('alerts', json.dumps(event_payload))
+            
             db.close()
         except Exception as e:
             print(f"[VideoProcessor-{self.source_id}] DB Error: {e}")

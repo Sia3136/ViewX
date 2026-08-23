@@ -28,13 +28,16 @@ export function AlertDrawer({
   const [groqExplanation, setGroqExplanation] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     if (!alert) {
       setGroqExplanation("");
       setError("");
+      setImgError(false);
       return;
     }
+    setImgError(false);
     
     const fetchGroqExplanation = async () => {
       setIsLoading(true);
@@ -85,7 +88,7 @@ export function AlertDrawer({
   }, [alert]);
 
   return (
-    <Drawer open={!!alert} onClose={onClose} title={alert?.type} subtitle={alert ? `${alert.room} · Student ${alert.studentId}` : undefined}>
+    <Drawer open={!!alert} onClose={onClose} title={alert?.type} subtitle={alert ? `${alert.room} · ${alert.studentId}` : undefined}>
       {alert && (
         <div className="flex flex-col gap-6">
           <div className="flex items-center gap-2">
@@ -100,11 +103,16 @@ export function AlertDrawer({
             <Field label="Status" value={alert.status} />
           </div>
 
-          {alert.evidenceImage ? (
+          {(alert.evidence || (alert as any).evidenceImage) && !imgError ? (
             <div>
               <div className="text-xs text-[var(--text-2)] mb-1.5">Visual Evidence</div>
               <div className="w-full h-48 bg-[var(--surface-2)] rounded-xl overflow-hidden border border-[var(--border)]">
-                <img src={alert.evidenceImage} alt="Alert Evidence" className="w-full h-full object-cover" />
+                <img 
+                  src={alert.evidence || (alert as any).evidenceImage} 
+                  alt="Alert Evidence" 
+                  className="w-full h-full object-cover" 
+                  onError={() => setImgError(true)}
+                />
               </div>
             </div>
           ) : (

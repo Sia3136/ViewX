@@ -37,6 +37,13 @@ app.include_router(websockets.router, prefix="/api/ws", tags=["websockets"])
 app.include_router(students.router, prefix="/api/students", tags=["students"])
 app.include_router(monitoring.router, prefix="/api/monitoring", tags=["monitoring"])
 
+from fastapi.staticfiles import StaticFiles
+import os
+
+# Create outputs/snapshots if it doesn't exist
+os.makedirs("outputs/snapshots", exist_ok=True)
+app.mount("/static", StaticFiles(directory="outputs"), name="static")
+
 @app.on_event("startup")
 def startup_event():
     # Initialize Video Manager
