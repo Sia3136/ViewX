@@ -166,6 +166,13 @@ export default function AlertsPage() {
     });
   }, [alerts, filter, query]);
 
+  const uniqueFilteredAlerts = useMemo(() => {
+    return filteredAlerts.filter(
+      (alert, index, self) =>
+        index === self.findIndex((a) => a.id === alert.id)
+    );
+  }, [filteredAlerts]);
+
   // ============================================================
   // ACTIONS
   // ============================================================
@@ -343,7 +350,7 @@ export default function AlertsPage() {
         /* ALERT GRID */
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-          {filteredAlerts.map((alert) => (
+          {uniqueFilteredAlerts.map((alert) => (
             <AlertCard
               key={alert.id}
               alert={alert}
