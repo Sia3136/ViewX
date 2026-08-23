@@ -56,8 +56,7 @@ class VideoProcessor:
         self.inference_thread = None
         
         self.student_history = defaultdict(lambda: deque(maxlen=60))
-        self.active_alerts = {} # track_id -> (behavior, expiry_time)
-        self.last_logged_time = defaultdict(float)
+        self.alert_states = defaultdict(lambda: defaultdict(bool))
         
         self.COOLDOWN = 10.0
         self.INFERENCE_FPS = 5.0
@@ -95,8 +94,8 @@ class VideoProcessor:
                 if self.annotated_frame is None:
                     self.annotated_frame = frame.copy()
             
-            # Read at ~30 FPS
-            time.sleep(1/30.0)
+            # Remove artificial sleep to ensure we drain the hardware/file buffer
+            # and only drop frames if inference is slower.
             
         cap.release()
         
@@ -217,13 +216,15 @@ class VideoProcessor:
                         ]
                         
                         for a in alerts:
+                            behavior_name = a['behavior']
+                            
                             if a['detected']:
-                                behavior_name = a['behavior']
-                                alert_key = f"{student_str_id}_{behavior_name}"
-                                if (current_video_time - self.last_logged_time[alert_key]) > self.COOLDOWN:
-                                    self.last_logged_time[alert_key] = current_video_time
+                                if not self.alert_states[student_str_id][behavior_name]:
+                                    self.alert_states[student_str_id][behavior_name] = True
                                     self._trigger_alert(student_str_id, a)
                                 detected_behaviors.append(behavior_name)
+                            else:
+                                self.alert_states[student_str_id][behavior_name] = False
                     
                     cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (255, 0, 0), 1)
                     label = f"ID: {tid}"
@@ -233,6 +234,22 @@ class VideoProcessor:
                         label += " | Body Rotated"
                         
                     cv2.putText(annotated_frame, label, (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0), 1)
+                    
+                    # Draw Pose Skeleton
+                    if best_kpt is not None:
+                        # Common coco connections
+                        skeleton = [(5,7), (7,9), (6,8), (8,10), (5,6)] 
+                        for point in best_kpt:
+                            px, py = int(point[0]), int(point[1])
+                            if px != 0 and py != 0:
+                                cv2.circle(annotated_frame, (px, py), 3, (0, 255, 0), -1)
+                        for u, v in skeleton:
+                            if u < len(best_kpt) and v < len(best_kpt):
+                                p1 = (int(best_kpt[u][0]), int(best_kpt[u][1]))
+                                p2 = (int(best_kpt[v][0]), int(best_kpt[v][1]))
+                                if p1 != (0,0) and p2 != (0,0):
+                                    cv2.line(annotated_frame, p1, p2, (0, 200, 0), 2)
+
                     students_data.append({"id": student_str_id, "box": [x1, y1, x2, y2]})
                     
                 # Process objects
@@ -257,16 +274,18 @@ class VideoProcessor:
                         assigned_id = obj.get('assigned_student_id')
                         if assigned_id and assigned_id not in ["unassigned", "ambiguous"]:
                             behavior_name = f"prohibited_object_{obj['class_name'].replace(' ', '_')}"
-                            alert_key = f"{assigned_id}_{behavior_name}"
-                            
-                            if (current_video_time - self.last_logged_time[alert_key]) > self.COOLDOWN:
-                                self.last_logged_time[alert_key] = current_video_time
+                            if not self.alert_states[assigned_id][behavior_name]:
+                                self.alert_states[assigned_id][behavior_name] = True
                                 alert = {
                                     'behavior': behavior_name,
                                     'confidence': float(obj['confidence']),
                                     'reason': f"Detected {obj['class_name']}"
                                 }
                                 self._trigger_alert(assigned_id, alert)
+                        elif assigned_id and self.alert_states[assigned_id].get(behavior_name):
+                             # To keep it simple, objects only clear when they go missing from linking, 
+                             # which we'd handle globally. For now, rely on object presence.
+                             pass
                                 
                         # Draw objects
                         x1, y1, x2, y2 = obj['box']

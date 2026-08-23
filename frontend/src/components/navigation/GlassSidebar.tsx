@@ -55,8 +55,8 @@ const NAV_ITEMS = [
     icon: BarChart3,
   },
   {
-    href: "/reports",
-    label: "Reports",
+    href: "/logs",
+    label: "Logs",
     icon: FileText,
   },
   {

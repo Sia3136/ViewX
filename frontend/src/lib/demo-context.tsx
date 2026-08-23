@@ -29,9 +29,10 @@ export function DemoModeProvider({ children }: { children: React.ReactNode }) {
 
     const connectWebSocket = () => {
       const token = localStorage.getItem("access_token");
+      const baseUrl = process.env.NEXT_PUBLIC_WS_URL || (typeof window !== "undefined" ? `ws://${window.location.hostname}:8080` : "ws://localhost:8080");
       const wsUrl = token
-        ? `ws://localhost:8000/api/ws/alerts?token=${token}`
-        : `ws://localhost:8000/api/ws/alerts`;
+        ? `${baseUrl}/api/ws/alerts?token=${token}`
+        : `${baseUrl}/api/ws/alerts`;
       ws = new WebSocket(wsUrl);
 
       ws.onmessage = (event) => {

@@ -1,93 +1,135 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Users, MapPin } from "lucide-react";
-import { sessions } from "@/lib/mock-data/sessions";
+import { Users, Video, AlertTriangle, FileText, CheckCircle2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { GlassButton } from "@/components/ui/GlassButton";
-import { ExamSession } from "@/lib/types";
-
-function SessionCard({ session, index }: { session: ExamSession; index: number }) {
-  return (
-    <GlassCard initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05, duration: 0.35 }}>
-      <div className="flex items-start justify-between mb-4">
-        <h3 className="font-medium text-lg pr-3">{session.name}</h3>
-        {session.status === "live" && (
-          <span className="shrink-0 inline-flex items-center gap-1.5 text-[10px] font-mono font-semibold text-white bg-[var(--sage)] px-2.5 py-1 rounded-full">
-            <span className="w-1.5 h-1.5 rounded-full bg-white breathing-dot" />
-            LIVE
-          </span>
-        )}
-      </div>
-      <div className="flex items-center gap-4 text-sm text-[var(--text-2)] mb-5">
-        <span className="flex items-center gap-1.5">
-          <Users size={14} /> {session.students} Students
-        </span>
-        <span className="flex items-center gap-1.5">
-          <MapPin size={14} /> {session.rooms} Rooms
-        </span>
-      </div>
-      <div className="text-xs text-[var(--text-2)] font-mono mb-5">
-        {session.status === "completed" ? `${session.startTime} — ${session.endTime}` : session.startTime}
-      </div>
-      <div className="flex gap-2">
-        {session.status === "live" && (
-          <>
-            <GlassButton size="sm" variant="primary" className="flex-1">
-              View Session
-            </GlassButton>
-            <GlassButton size="sm" variant="secondary" className="flex-1">
-              Session Report
-            </GlassButton>
-          </>
-        )}
-        {session.status === "upcoming" && (
-          <GlassButton size="sm" variant="primary" className="flex-1">
-            Start Monitoring
-          </GlassButton>
-        )}
-        {session.status === "completed" && (
-          <GlassButton size="sm" variant="secondary" className="flex-1">
-            Session Report
-          </GlassButton>
-        )}
-      </div>
-    </GlassCard>
-  );
-}
+import { eventsService, BackendEvent } from "@/lib/services/events";
+import { Alert } from "@/lib/types";
 
 export default function SessionsPage() {
-  const live = sessions.filter((s) => s.status === "live");
-  const upcoming = sessions.filter((s) => s.status === "upcoming");
-  const completed = sessions.filter((s) => s.status === "completed");
+  const [events, setEvents] = useState<Alert[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [cameraCount, setCameraCount] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchData = async () => {
+      try {
+        // Fetch real events for session analytics
+        const evts = await eventsService.getEvents(0, 500);
+        
+        // Fetch active cameras for session metadata
+        const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/monitoring`;
+        const res = await fetch(url);
+        let cams = 0;
+        if (res.ok) {
+          const data = await res.json();
+          cams = data.length;
+        }
+
+        if (mounted) {
+          setEvents(evts);
+          setCameraCount(cams);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Failed to load session data", err);
+        if (mounted) setLoading(false);
+      }
+    };
+    fetchData();
+    return () => { mounted = false; };
+  }, []);
+
+  const criticalCount = events.filter(e => e.severity === 'critical').length;
+  const highCount = events.filter(e => e.severity === 'high').length;
+  const mediumCount = events.filter(e => e.severity === 'medium').length;
+
+  if (loading) {
+    return <div className="p-10 text-[var(--text-2)] text-center">Loading session analytics...</div>;
+  }
 
   return (
-    <div className="max-w-[1200px] mx-auto flex flex-col gap-10 pb-10">
+    <div className="max-w-[1000px] mx-auto flex flex-col gap-8 pb-10">
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <div className="flex items-center gap-3">
-          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">Active Sessions</h1>
-          <span className="text-xs bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2 py-0.5 rounded-full font-mono mt-1">SIMULATED DATA</span>
-        </div>
-        <p className="text-[var(--text-2)] mt-2">Manage ongoing and upcoming examination schedules.</p>
+        <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">Active Session</h1>
+        <p className="text-[var(--text-2)] mt-2">Real-time analytics and reporting for the current monitoring session.</p>
       </motion.div>
 
-      {[
-        { label: "Live", items: live },
-        { label: "Upcoming", items: upcoming },
-        { label: "Completed", items: completed },
-      ].map(
-        (group) =>
-          group.items.length > 0 && (
-            <div key={group.label}>
-              <h2 className="text-sm font-mono tracking-wider text-[var(--text-2)] uppercase mb-4">{group.label}</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                {group.items.map((s, i) => (
-                  <SessionCard key={s.id} session={s} index={i} />
-                ))}
-              </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <GlassCard hover={false} className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-[var(--text-2)] text-sm">
+            <Video size={16} /> Active Cameras
+          </div>
+          <div className="text-3xl font-semibold">{cameraCount > 0 ? cameraCount : '—'}</div>
+        </GlassCard>
+
+        <GlassCard hover={false} className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-red-500 text-sm">
+            <AlertTriangle size={16} /> Critical Events
+          </div>
+          <div className="text-3xl font-semibold">{criticalCount}</div>
+        </GlassCard>
+
+        <GlassCard hover={false} className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-orange-500 text-sm">
+            <AlertTriangle size={16} /> High Events
+          </div>
+          <div className="text-3xl font-semibold">{highCount}</div>
+        </GlassCard>
+        
+        <GlassCard hover={false} className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-[var(--text-2)] text-sm">
+            <FileText size={16} /> Total Logged Events
+          </div>
+          <div className="text-3xl font-semibold">{events.length}</div>
+        </GlassCard>
+      </div>
+
+      <div>
+        <h2 className="text-sm font-mono tracking-wider text-[var(--text-2)] uppercase mb-4 mt-4">Session Event Summary</h2>
+        <GlassCard hover={false}>
+          {events.length === 0 ? (
+            <div className="py-12 flex flex-col items-center justify-center text-[var(--text-2)]">
+              <CheckCircle2 size={32} className="mb-3 opacity-50 text-[var(--sage)]" />
+              <p>No behavioural events recorded in this session yet.</p>
             </div>
-          )
-      )}
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border)] text-[var(--text-2)]">
+                    <th className="pb-3 font-medium px-4">Time</th>
+                    <th className="pb-3 font-medium px-4">Student</th>
+                    <th className="pb-3 font-medium px-4">Behaviour Type</th>
+                    <th className="pb-3 font-medium px-4">Severity</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {events.slice(0, 50).map((event, i) => (
+                    <tr key={`${event.id}-${i}`}>
+                      <td className="py-3 px-4 font-mono text-xs">{event.timestamp}</td>
+                      <td className="py-3 px-4 font-mono text-xs">{event.studentId}</td>
+                      <td className="py-3 px-4">{event.type.replace(/_/g, ' ')}</td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                          event.severity === 'critical' ? 'text-red-500 bg-red-500/10' :
+                          event.severity === 'high' ? 'text-orange-500 bg-orange-500/10' :
+                          event.severity === 'medium' ? 'text-yellow-500 bg-yellow-500/10' :
+                          'text-slate-500 bg-slate-500/10'
+                        }`}>
+                          {event.severity}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </GlassCard>
+      </div>
     </div>
   );
 }
