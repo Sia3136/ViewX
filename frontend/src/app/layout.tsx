@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 import { ThemeProvider } from "@/lib/theme-context";
 import { AuthProvider } from "@/context/AuthContext";
 
@@ -18,8 +21,9 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
+      className={inter.variable}
     >
-      <body>
+      <body className="font-sans antialiased">
         <ThemeProvider>
           <AuthProvider>
             {children}

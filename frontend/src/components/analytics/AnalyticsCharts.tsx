@@ -166,8 +166,8 @@ export function AnalyticsCharts() {
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis dataKey="time" tick={{ fontSize: 11, fill: "var(--text-2)" }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 11, fill: "var(--text-2)" }} axisLine={false} tickLine={false} />
-            <Tooltip contentStyle={tooltipStyle()} />
-            <Area type="monotone" dataKey="alerts" stroke="var(--sage)" strokeWidth={2} fill="url(#alertGradient)" />
+            <Tooltip contentStyle={tooltipStyle()} cursor={{ fill: 'var(--surface-2)', opacity: 0.4 }} />
+            <Area type="monotone" dataKey="alerts" stroke="var(--sage)" strokeWidth={3} fill="url(#alertGradient)" activeDot={{ r: 6, fill: "var(--sage)", stroke: "var(--bg)", strokeWidth: 2 }} style={{ cursor: 'pointer' }} />
           </AreaChart>
         </ResponsiveContainer>
       </ChartCard>
@@ -190,10 +190,10 @@ export function AnalyticsCharts() {
                   paddingAngle={3}
                 >
                   {alertCategories.map((_, i) => (
-                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke="var(--surface)" strokeWidth={2} />
+                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke="var(--surface)" strokeWidth={2} style={{ cursor: 'pointer', outline: 'none' }} className="hover:opacity-80 transition-opacity duration-300" />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={tooltipStyle()} />
+                <Tooltip contentStyle={tooltipStyle()} itemStyle={{ color: 'var(--text)' }} />
               </PieChart>
             </ResponsiveContainer>
             <div className="flex flex-wrap gap-3 mt-3 justify-center">
@@ -214,10 +214,10 @@ export function AnalyticsCharts() {
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis dataKey="room" tick={{ fontSize: 11, fill: "var(--text-2)" }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 11, fill: "var(--text-2)" }} axisLine={false} tickLine={false} />
-            <Tooltip contentStyle={tooltipStyle()} />
-            <Bar dataKey="risk" radius={[6, 6, 0, 0]}>
+            <Tooltip contentStyle={tooltipStyle()} cursor={{ fill: 'var(--surface-2)', opacity: 0.4 }} />
+            <Bar dataKey="risk" radius={[6, 6, 0, 0]} style={{ cursor: 'pointer' }}>
               {roomRisk.map((r, i) => (
-                <Cell key={i} fill={r.risk > 60 ? "var(--red)" : r.risk > 35 ? "var(--amber)" : "var(--sage)"} />
+                <Cell key={i} fill={r.risk > 60 ? "var(--red)" : r.risk > 35 ? "var(--amber)" : "var(--sage)"} className="hover:opacity-80 transition-opacity duration-300" />
               ))}
             </Bar>
           </BarChart>
@@ -230,9 +230,9 @@ export function AnalyticsCharts() {
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis dataKey="time" allowDuplicatedCategory={false} tick={{ fontSize: 11, fill: "var(--text-2)" }} axisLine={false} tickLine={false} />
             <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "var(--text-2)" }} axisLine={false} tickLine={false} />
-            <Tooltip contentStyle={tooltipStyle()} />
-            <Line type="monotone" dataKey="confidence" stroke="var(--blue)" strokeWidth={2} dot={false} name="AI Confidence" />
-            <Line type="monotone" dataKey="health" stroke="var(--sage)" strokeWidth={2} dot={false} name="System Health" />
+            <Tooltip contentStyle={tooltipStyle()} cursor={{ stroke: 'var(--border)', strokeWidth: 1, strokeDasharray: '4 4' }} />
+            <Line type="monotone" dataKey="confidence" stroke="var(--blue)" strokeWidth={3} dot={false} activeDot={{ r: 5, fill: "var(--blue)", stroke: "var(--bg)", strokeWidth: 2 }} name="AI Confidence" style={{ cursor: 'pointer' }} />
+            <Line type="monotone" dataKey="health" stroke="var(--sage)" strokeWidth={3} dot={false} activeDot={{ r: 5, fill: "var(--sage)", stroke: "var(--bg)", strokeWidth: 2 }} name="System Health" style={{ cursor: 'pointer' }} />
           </LineChart>
         </ResponsiveContainer>
         <div className="flex gap-4 mt-3 justify-center text-xs text-[var(--text-2)]">

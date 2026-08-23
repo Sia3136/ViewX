@@ -42,13 +42,15 @@ export default function LiveSurveillanceDashboard() {
         const res = await fetch(url);
         if (res.ok && mounted) {
           const data = await res.json();
-          const mappedCameras = data.map((source: any, index: number) => ({
-            id: String(source.id),
-            label: source.name || `Camera ${source.id}`,
-            room: `Room ${index + 1}`,
-            hasAlert: false,
-            videoUrl: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/monitoring/${source.id}/stream`
-          }));
+          const mappedCameras = data
+            .filter((source: any) => !source.name?.includes("Camera 7") && !source.name?.includes("Camera 8"))
+            .map((source: any, index: number) => ({
+              id: String(source.id),
+              label: source.name || `Camera ${source.id}`,
+              room: `Room ${index + 1}`,
+              hasAlert: false,
+              videoUrl: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/monitoring/${source.id}/stream`
+            }));
           setCameras(mappedCameras);
         }
       } catch (e) {
@@ -77,7 +79,10 @@ export default function LiveSurveillanceDashboard() {
           const normalizedAlert = normalizeEvent(rawData);
           // Only show HIGH and CRITICAL in the live feed
           if (normalizedAlert.severity === 'high' || normalizedAlert.severity === 'critical') {
-            setAlerts((prev) => [normalizedAlert, ...prev].slice(0, 100)); // Keep last 100
+            setAlerts((prev) => {
+              if (prev.some(a => a.id === normalizedAlert.id)) return prev;
+              return [normalizedAlert, ...prev].slice(0, 100);
+            });
             
             // Briefly pulse camera border
             setCameras(cams => cams.map(c => {
@@ -118,29 +123,27 @@ export default function LiveSurveillanceDashboard() {
     setAiError("");
     setAiExplanation("");
     try {
-      const apiKey = process.env.NEXT_PUBLIC_GROQ_API_KEY || process.env.REACT_APP_GROQ_API_KEY;
-      if (!apiKey) throw new Error("Groq API key not found");
-      
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      const response = await fetch("/api/alerts/explanation", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "llama3-70b-8192",
-          messages: [
-            { role: "system", content: "You are an AI assistant analyzing exam surveillance alerts. Be concise and professional." },
-            { role: "user", content: `Explain this alert: Type=${alert.type}, Description=${alert.description}, Student=${alert.studentId}` }
-          ],
-          temperature: 0.3,
-          max_tokens: 150
+          alertId: alert.id,
+          type: alert.type,
+          severity: alert.severity,
+          confidence: alert.confidence,
+          studentId: alert.studentId,
+          room: alert.room,
+          description: alert.description
         })
       });
 
-      if (!response.ok) throw new Error(`Groq API error: ${response.status}`);
       const data = await response.json();
-      setAiExplanation(data.choices[0]?.message?.content || "No explanation provided.");
+      
+      if (!response.ok) throw new Error(data.error || `API error: ${response.status}`);
+      
+      setAiExplanation(data.explanation || "No explanation provided.");
     } catch (err: any) {
       setAiError(err.message || "Failed to fetch AI explanation.");
     } finally {
@@ -272,8 +275,8 @@ export default function LiveSurveillanceDashboard() {
 
   return (
     <div style={{ display: 'flex', height: '100%', gap: '16px' }}>
-      {/* LEFT: CCTV Grid (Now Full Width) */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', paddingRight: '4px' }}>
+      {/* LEFT: CCTV Grid (80%) */}
+      <div style={{ flex: 4, display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', paddingRight: '4px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '12px', alignContent: 'start' }}>
           {cameras.length === 0 && (
              <div style={{ color: 'var(--text-2)', padding: '20px' }}>Loading cameras...</div>
@@ -336,6 +339,55 @@ export default function LiveSurveillanceDashboard() {
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* RIGHT: Live Alerts Feed (20%) */}
+      <div style={{ 
+        flex: 1, minWidth: '280px', display: 'flex', flexDirection: 'column', 
+        backgroundColor: 'var(--surface-2)', borderRadius: '12px', border: '1px solid var(--border)',
+        overflow: 'hidden'
+      }}>
+        <div style={{ 
+          padding: '16px', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--surface)',
+          display: 'flex', alignItems: 'center', gap: '8px' 
+        }}>
+          <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#ef4444', animation: 'pulse 2s infinite' }} />
+          <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)', margin: 0 }}>Live Alerts</h3>
+        </div>
+        
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {alerts.length === 0 ? (
+            <div style={{ color: 'var(--text-2)', fontSize: '13px', textAlign: 'center', padding: '20px 0' }}>
+              No critical alerts detected yet.
+            </div>
+          ) : (
+            alerts.map((alert) => (
+              <div 
+                key={alert.id}
+                onClick={() => handleAlertClick(alert)}
+                style={{
+                  backgroundColor: 'var(--surface)', padding: '12px', borderRadius: '8px',
+                  border: '1px solid var(--border)', borderLeft: `3px solid ${alert.severity === 'critical' ? '#dc2626' : '#ea580c'}`,
+                  cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '6px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                }}
+                className="hover:bg-[var(--surface-3)] transition-colors"
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)' }}>
+                    {alert.type.replace(/_/g, ' ')}
+                  </span>
+                  <span style={{ fontSize: '10px', color: 'var(--text-2)', fontFamily: 'monospace' }}>
+                    {alert.timestamp}
+                  </span>
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text-2)' }}>
+                  Person - {alert.studentId}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

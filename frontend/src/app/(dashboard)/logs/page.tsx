@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { BackendEvent, normalizeEvent, eventsService } from "@/lib/services/events";
 import { Alert } from "@/lib/types";
+import { Download } from "lucide-react";
 
 export default function LogsPage() {
   const [logs, setLogs] = useState<Alert[]>([]);
@@ -77,6 +78,26 @@ export default function LogsPage() {
     return false;
   });
 
+  const downloadLogs = () => {
+    if (filteredLogs.length === 0) return;
+    
+    const headers = ["ID,Timestamp,Type,Severity,Confidence,Person ID,Room,Description"];
+    const rows = filteredLogs.map(log => {
+      const type = log.type.replace(/_/g, ' ');
+      const desc = log.description ? `"${log.description.replace(/"/g, '""')}"` : "";
+      return `${log.id},${log.timestamp},${type},${log.severity},${log.confidence},${log.studentId},${log.room},${desc}`;
+    });
+    
+    const csvContent = "data:text/csv;charset=utf-8," + headers.concat(rows).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `system_logs_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -92,11 +113,20 @@ export default function LogsPage() {
           </p>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={downloadLogs}
+            disabled={filteredLogs.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-sm font-medium rounded-xl border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download size={16} />
+            Download CSV
+          </button>
+          
           <select 
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl border bg-[var(--surface)] text-sm"
+            className="px-3 py-2 rounded-xl border bg-[var(--surface)] text-sm outline-none focus:border-[var(--sage)]"
           >
             <option value="ALL">All Events</option>
             <option value="CRITICAL">Critical Only</option>

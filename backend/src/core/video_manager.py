@@ -82,7 +82,13 @@ class VideoProcessor:
             self.running = False
             return
             
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        if not fps or fps <= 0:
+            fps = 25.0
+        frame_delay = 1.0 / fps
+            
         while self.running:
+            start_t = time.time()
             ret, frame = cap.read()
             if not ret:
                 cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
@@ -94,8 +100,10 @@ class VideoProcessor:
                 if self.annotated_frame is None:
                     self.annotated_frame = frame.copy()
             
-            # Remove artificial sleep to ensure we drain the hardware/file buffer
-            # and only drop frames if inference is slower.
+            elapsed = time.time() - start_t
+            sleep_time = frame_delay - elapsed
+            if sleep_time > 0:
+                time.sleep(sleep_time)
             
         cap.release()
         
