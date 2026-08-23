@@ -5,7 +5,7 @@ import time
 import numpy as np
 from collections import defaultdict, deque
 from src.utils.feedback import FeedbackManager
-
+from src.tracking.multi_camera_reid import MultiCameraReID
 
 from src.behaviour.behaviour import BehaviorEngine
 from src.detection.object_detector import ProhibitedObjectDetector, link_objects_to_students
@@ -184,6 +184,12 @@ import os
 from datetime import datetime
 
 import cv2, os
+
+# === MULTI-CAMERA GLOBAL ID SETUP (change these to your real camera positions) ===
+multi_reid = MultiCameraReID(
+    camera_positions=[(100, 200), (800, 150)],   # <-- PUT YOUR ACTUAL CAMERA COORDINATES HERE
+    reid_threshold=0.75
+)
 
 VIDEO = "data/videos/Video1.mkv"
 OUT = "dataset/images/train"
@@ -365,6 +371,11 @@ def is_near_known_invigilator(box, invigilator_centers, max_dist=120):
             return True
     return False
 
+multi_reid = MultiCameraReID(
+    camera_positions=[(100, 200), (800, 150)],   # <--- PUT YOUR REAL CAMERA COORDINATES HERE
+    reid_threshold=0.75
+)
+
 invigilator_ids = set()
 invigilator_centers = []
 invigilator_confirm = {}   # track_id → consecutive standing frames
@@ -372,8 +383,8 @@ sitting_confirm = {}       # track_id → consecutive sitting frames
 invigilator_boxes = []
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-VIDEO_PATH = PROJECT_ROOT / "data" / "videos" / "Video4.mkv"
-OUTPUT_PATH = str(PROJECT_ROOT / "outputs" / "day4_output.mp4")
+VIDEO_PATH = PROJECT_ROOT / "data" / "videos" / "Video3.mkv"
+OUTPUT_PATH = str(PROJECT_ROOT / "outputs" / "day3_output.mp4")
 print("VIDEO_PATH =", VIDEO_PATH)
 print("Exists =", VIDEO_PATH.exists())
 MODEL_NAME = "yolov8s-pose.pt"
@@ -654,6 +665,7 @@ while True:
             engine.detect_sustained_neighbour_gaze,   # keep this if it exists
             engine.detect_lean_and_look,              # only if you added it
             engine.detect_student_standing,
+            
             
         ]
 
