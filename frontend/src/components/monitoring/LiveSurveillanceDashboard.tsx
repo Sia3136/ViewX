@@ -266,7 +266,7 @@ export default function LiveSurveillanceDashboard() {
 
   return (
     <div style={{ display: 'flex', height: '100%', gap: '16px' }}>
-      {/* LEFT: CCTV Grid */}
+      {/* LEFT: CCTV Grid (Now Full Width) */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', paddingRight: '4px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '12px', alignContent: 'start' }}>
           {cameras.length === 0 && (
@@ -330,58 +330,6 @@ export default function LiveSurveillanceDashboard() {
               </div>
             );
           })}
-        </div>
-      </div>
-
-      {/* RIGHT: Live Alerts Feed */}
-      <div style={{
-        width: '320px',
-        backgroundColor: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: '12px',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden'
-      }}>
-        <div style={{ padding: '16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>Important Alerts</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div className="animate-pulse" style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#ef4444' }}></div>
-            <span style={{ fontSize: '10px', color: 'var(--text-2)', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Live</span>
-          </div>
-        </div>
-        
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          {alerts.length === 0 && (
-             <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-2)', fontSize: '13px' }}>
-               No high or critical events currently detected.
-             </div>
-          )}
-          {alerts.map((alert, idx) => (
-            <div 
-              key={`${alert.id}-${idx}`}
-              onClick={() => handleAlertClick(alert)}
-              style={{
-                padding: '16px',
-                borderBottom: '1px solid var(--border)',
-                cursor: 'pointer',
-                backgroundColor: alert.severity === 'critical' ? 'rgba(220,38,38,0.06)' : 'rgba(234,88,12,0.05)',
-                borderLeft: `3px solid ${alert.severity === 'critical' ? '#dc2626' : '#ea580c'}`,
-              }}
-              className="hover:opacity-80 transition-opacity"
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <span style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--text-2)' }}>{alert.studentId}</span>
-                <span style={{ fontSize: '10px', color: 'var(--text-2)' }}>{alert.timestamp}</span>
-              </div>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: alert.severity === 'critical' ? '#dc2626' : '#ea580c', marginBottom: '4px' }}>
-                {alert.type.replace(/_/g, ' ')}
-              </div>
-              <div style={{ fontSize: '12px', color: 'var(--text-2)', lineHeight: 1.4 }}>
-                {alert.description}
-              </div>
-            </div>
-          ))}
         </div>
       </div>
 

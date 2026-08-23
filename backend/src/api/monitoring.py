@@ -11,9 +11,16 @@ router = APIRouter()
 
 @router.get("/")
 def get_video_sources(db: Session = Depends(get_db)):
-    """Return all configured video sources"""
+    """Return all configured video sources, filtering out inactive/corrupted ones"""
     sources = db.query(VideoSource).all()
-    return [{"id": s.id, "name": s.name, "type": s.type, "location": s.location, "status": s.status} for s in sources]
+    manager = VideoStreamManager()
+    active_ids = manager.processors.keys()
+    
+    # Only return live, actively processing streams to avoid corrupted feeds in UI
+    return [
+        {"id": s.id, "name": s.name, "type": s.type, "location": s.location, "status": "active"} 
+        for s in sources if s.id in active_ids
+    ]
 
 @router.get("/{source_id}/stream")
 def get_video_stream(source_id: int):

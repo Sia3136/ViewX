@@ -100,19 +100,20 @@ export function AlertDrawer({
             <Field label="Status" value={alert.status} />
           </div>
 
-          {alert.evidenceImage && (
+          {alert.evidenceImage ? (
             <div>
               <div className="text-xs text-[var(--text-2)] mb-1.5">Visual Evidence</div>
               <div className="w-full h-48 bg-[var(--surface-2)] rounded-xl overflow-hidden border border-[var(--border)]">
                 <img src={alert.evidenceImage} alt="Alert Evidence" className="w-full h-full object-cover" />
               </div>
             </div>
-          )}
-
-          {alert.evidence && !alert.evidenceImage && (
+          ) : (
             <div>
-              <div className="text-xs text-[var(--text-2)] mb-1.5">Evidence</div>
-              <div className="text-sm card-surface p-3 rounded-xl leading-relaxed">{alert.evidence}</div>
+              <div className="text-xs text-[var(--text-2)] mb-1.5">Visual Evidence</div>
+              <div className="w-full h-48 bg-[var(--surface-2)] rounded-xl overflow-hidden border border-[var(--border)] flex items-center justify-center flex-col text-[var(--text-2)]">
+                <span className="text-sm">Historical snapshot unavailable</span>
+                <span className="text-xs opacity-60">Live stream data only</span>
+              </div>
             </div>
           )}
 
@@ -159,13 +160,10 @@ export function AlertDrawer({
 
           <div className="flex gap-2 pt-2 sticky bottom-0">
             <GlassButton variant="primary" className="flex-1" onClick={() => onAction(alert, "confirm")}>
-              Confirm
+              Accept Alert
             </GlassButton>
             <GlassButton variant="secondary" className="flex-1" onClick={() => onAction(alert, "dismiss")}>
-              Dismiss
-            </GlassButton>
-            <GlassButton variant="danger" className="flex-1" onClick={() => onAction(alert, "escalate")}>
-              Escalate
+              Reject False Positive
             </GlassButton>
           </div>
         </div>
