@@ -84,14 +84,14 @@ export default function AlertsPage() {
       const wsUrl = token
         ? `${baseUrl}/api/ws/alerts?token=${token}`
         : `${baseUrl}/api/ws/alerts`;
-        
+
       ws = new WebSocket(wsUrl);
 
       ws.onmessage = (event) => {
         try {
           const rawData: BackendEvent = JSON.parse(event.data);
           const newAlert = normalizeEvent(rawData);
-          
+
           // Prepend the new alert to the state instantly (avoiding duplicates)
           setAlerts((prev) => {
             if (prev.some((a) => a.id === newAlert.id)) return prev;
@@ -171,24 +171,24 @@ export default function AlertsPage() {
   // ============================================================
 
   const handleAction = (
-  alert: Alert,
-  action: "confirm" | "dismiss" | "escalate"
-) => {
-  console.log(`Alert ${alert.id}: ${action}`);
+    alert: Alert,
+    action: "confirm" | "dismiss" | "escalate"
+  ) => {
+    console.log(`Alert ${alert.id}: ${action}`);
 
-  setAlerts((prev) =>
-    prev.map((item) =>
-      item.id === alert.id
-        ? {
+    setAlerts((prev) =>
+      prev.map((item) =>
+        item.id === alert.id
+          ? {
             ...item,
             status: "resolved",
           }
-        : item
-    )
-  );
+          : item
+      )
+    );
 
-  setSelectedAlert(null);
-};
+    setSelectedAlert(null);
+  };
 
   // ============================================================
   // LOADING
@@ -338,6 +338,8 @@ export default function AlertsPage() {
           </p>
         </motion.div>
       ) : (
+
+
         /* ALERT GRID */
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">

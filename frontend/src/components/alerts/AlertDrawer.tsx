@@ -37,55 +37,69 @@ export function AlertDrawer({
       setImgError(false);
       return;
     }
+
     setImgError(false);
-    
+
+    // If the alert already has an AI analysis, just use it and skip fetching
+    if ((alert as any).aiAnalysis) {
+      setGroqExplanation((alert as any).aiAnalysis);
+      setIsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
     const fetchGroqExplanation = async () => {
       setIsLoading(true);
       setError("");
+
       try {
-        const apiKey = process.env.NEXT_PUBLIC_GROQ_API_KEY;
-        if (!apiKey) {
-          throw new Error("Groq API key not found in environment variables.");
-        }
-        
-        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        const response = await fetch("/api/alerts/explanation", {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "llama3-70b-8192",
-            messages: [
-              {
-                role: "system",
-                content: "You are an AI assistant analyzing exam surveillance alerts. Explain what happened in human terms, why it's suspicious, and how confident we are based on the numerical details. Keep it concise."
-              },
-              {
-                role: "user",
-                content: `Alert Details:\nType: ${alert.type}\nSeverity: ${alert.severity}\nConfidence: ${alert.confidence}%\nStudent: ${alert.studentId}\nRoom: ${alert.room}\nDescription: ${alert.description || "N/A"}`
-              }
-            ],
-            temperature: 0.3,
-            max_tokens: 200
-          })
+            alertId: alert.id,
+            type: alert.type,
+            severity: alert.severity,
+            confidence: alert.confidence,
+            studentId: alert.studentId,
+            room: alert.room,
+            description: alert.description || "N/A",
+          }),
         });
 
+        const data = await response.json();
+
         if (!response.ok) {
-          throw new Error(`Groq API error: ${response.status}`);
+          throw new Error(
+            data.error || `Request failed with ${response.status}`
+          );
         }
 
-        const data = await response.json();
-        setGroqExplanation(data.choices[0]?.message?.content || "No explanation provided.");
+        if (!cancelled) {
+          setGroqExplanation(data.explanation || "No explanation provided.");
+          // Optionally attach it to the alert so it doesn't refetch if reopened immediately
+          (alert as any).aiAnalysis = data.explanation;
+        }
       } catch (err: any) {
-        setError(err.message || "Failed to fetch AI explanation.");
+        if (!cancelled) {
+          setError(err.message || "Failed to fetch AI explanation.");
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchGroqExplanation();
-  }, [alert]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [alert?.id]);
 
   return (
     <Drawer open={!!alert} onClose={onClose} title={alert?.type} subtitle={alert ? `${alert.room} · ${alert.studentId}` : undefined}>
