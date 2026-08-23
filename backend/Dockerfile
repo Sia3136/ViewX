@@ -1,9 +1,9 @@
-FROM python:3.11-slim
+# Use stable Debian bookworm to avoid trixie repository 403 Forbidden errors
+FROM python:3.11-slim-bookworm
 
 WORKDIR /app
 
-# Install curl, libgl1 (Mesa OpenGL), and libglib2.0 for OpenCV
-RUN apt-get update && apt-get install -y curl libgl1 libglib2.0-0 && rm -rf /var/lib/apt/lists/*
+# Removed apt-get update: opencv-python-headless does not require libgl1 or libglib2.0
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \

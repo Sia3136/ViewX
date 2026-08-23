@@ -298,15 +298,6 @@ export function TopExamBar({
           <span className="w-px h-3 bg-[var(--border)]" />
 
           <span>
-            CAMERAS:
-            <strong className="ml-1 text-[var(--text)]">
-              04 ONLINE
-            </strong>
-          </span>
-
-          <span className="w-px h-3 bg-[var(--border)]" />
-
-          <span>
             MONITORING:
             <strong className="ml-1 text-emerald-600 dark:text-emerald-400">
               OPERATIONAL

@@ -48,8 +48,61 @@ def startup_event():
         sources = db.query(VideoSource).filter(VideoSource.status == "RUNNING").all()
         for source in sources:
             manager.start_stream(source.id, source.location)
+            
+        # Seed events from latest commit's events.json if table is empty
+        from src.models import Event, Student
+        import json
+        from datetime import datetime, timedelta
+        
+        # Check if we already have events seeded
+        existing_events_count = db.query(Event).count()
+        if existing_events_count <= 2: # allows overwrite of standard mock events
+            json_paths = ["backend/outputs/events.json", "outputs/events.json", "backend/logs/events.json"]
+            events_data = []
+            for path in json_paths:
+                if os.path.exists(path):
+                    try:
+                        with open(path, "r", encoding="utf-8") as f:
+                            events_data = json.load(f)
+                            print(f"Loaded {len(events_data)} events from {path}")
+                            break
+                    except Exception as e:
+                        print(f"Failed to read {path}: {e}")
+            
+            if events_data:
+                # Clear legacy mock events if any
+                db.query(Event).delete()
+                db.commit()
+                
+                base_time = datetime.now()
+                for item in events_data:
+                    # student_id needs to exist in students table
+                    stud_id = f"student_{int(item['student_id']):03d}" if item['student_id'].isdigit() else item['student_id']
+                    student = db.query(Student).filter(Student.id == stud_id).first()
+                    if not student:
+                        student = Student(id=stud_id)
+                        db.add(student)
+                        db.commit()
+                    
+                    # Convert timestamp offset or float to datetime
+                    sec_offset = float(item.get("timestamp", 0))
+                    evt_time = base_time - timedelta(seconds=120) + timedelta(seconds=sec_offset)
+                    
+                    db_event = Event(
+                        source_id=1, # Default legacy/first camera source
+                        student_id=stud_id,
+                        behaviour_type=item["behaviour_type"],
+                        confidence=float(item["confidence"]),
+                        explanation=item["explanation"],
+                        timestamp=evt_time,
+                        keypoints=item.get("keypoints_snapshot", {})
+                    )
+                    db.add(db_event)
+                db.commit()
+                print(f"Seeded {len(events_data)} events from events.json into DB.")
+                
     except Exception as e:
-        print(f"Error starting video streams: {e}")
+        print(f"Error starting video streams or seeding events: {e}")
     finally:
         db.close()
 

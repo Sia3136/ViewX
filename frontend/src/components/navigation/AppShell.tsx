@@ -35,8 +35,7 @@ export function AppShell({
       {/* Main application area */}
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
 
-        {/* Top header */}
-        <TopExamBar onOpenAI={() => setAiOpen(true)} />
+        {/* Top header (Removed as requested) */}
 
         {/* Page content */}
         <main className="flex-1 px-4 pb-24 pt-5 sm:px-6 lg:px-7 lg:pb-8">
@@ -47,8 +46,7 @@ export function AppShell({
       {/* Mobile navigation */}
       <MobileNav />
 
-      {/* Demo mode */}
-      <DemoModeToggle />
+      {/* Demo mode (Removed as requested) */}
 
       {/* AI monitoring assistant */}
       <AIAssistant

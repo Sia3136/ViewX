@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { Alert } from "@/lib/types";
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
@@ -24,6 +25,65 @@ export function AlertDrawer({
   onClose: () => void;
   onAction: (alert: Alert, action: "confirm" | "dismiss" | "escalate") => void;
 }) {
+  const [groqExplanation, setGroqExplanation] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
+
+  useEffect(() => {
+    if (!alert) {
+      setGroqExplanation("");
+      setError("");
+      return;
+    }
+    
+    const fetchGroqExplanation = async () => {
+      setIsLoading(true);
+      setError("");
+      try {
+        const apiKey = process.env.NEXT_PUBLIC_GROQ_API_KEY;
+        if (!apiKey) {
+          throw new Error("Groq API key not found in environment variables.");
+        }
+        
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "llama3-70b-8192",
+            messages: [
+              {
+                role: "system",
+                content: "You are an AI assistant analyzing exam surveillance alerts. Explain what happened in human terms, why it's suspicious, and how confident we are based on the numerical details. Keep it concise."
+              },
+              {
+                role: "user",
+                content: `Alert Details:\nType: ${alert.type}\nSeverity: ${alert.severity}\nConfidence: ${alert.confidence}%\nStudent: ${alert.studentId}\nRoom: ${alert.room}\nDescription: ${alert.description || "N/A"}`
+              }
+            ],
+            temperature: 0.3,
+            max_tokens: 200
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Groq API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setGroqExplanation(data.choices[0]?.message?.content || "No explanation provided.");
+      } catch (err: any) {
+        setError(err.message || "Failed to fetch AI explanation.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchGroqExplanation();
+  }, [alert]);
+
   return (
     <Drawer open={!!alert} onClose={onClose} title={alert?.type} subtitle={alert ? `${alert.room} · Student ${alert.studentId}` : undefined}>
       {alert && (
@@ -40,19 +100,39 @@ export function AlertDrawer({
             <Field label="Status" value={alert.status} />
           </div>
 
-          {alert.evidence && (
+          {alert.evidenceImage && (
+            <div>
+              <div className="text-xs text-[var(--text-2)] mb-1.5">Visual Evidence</div>
+              <div className="w-full h-48 bg-[var(--surface-2)] rounded-xl overflow-hidden border border-[var(--border)]">
+                <img src={alert.evidenceImage} alt="Alert Evidence" className="w-full h-full object-cover" />
+              </div>
+            </div>
+          )}
+
+          {alert.evidence && !alert.evidenceImage && (
             <div>
               <div className="text-xs text-[var(--text-2)] mb-1.5">Evidence</div>
               <div className="text-sm card-surface p-3 rounded-xl leading-relaxed">{alert.evidence}</div>
             </div>
           )}
 
-          {alert.aiAnalysis && (
-            <div>
-              <div className="text-xs text-[var(--text-2)] mb-1.5">AI Analysis</div>
-              <div className="text-sm card-surface p-3 rounded-xl leading-relaxed">{alert.aiAnalysis}</div>
+          <div>
+            <div className="text-xs text-[var(--text-2)] mb-1.5">AI Analysis (Groq)</div>
+            <div className="text-sm card-surface p-3 rounded-xl leading-relaxed">
+              {isLoading ? (
+                <span className="animate-pulse flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
+                  Generating explanation...
+                </span>
+              ) : error ? (
+                <span className="text-[var(--red)]">{error}</span>
+              ) : groqExplanation ? (
+                groqExplanation
+              ) : (
+                alert.aiAnalysis || "No analysis available."
+              )}
             </div>
-          )}
+          </div>
 
           {alert.timeline && (
             <div>

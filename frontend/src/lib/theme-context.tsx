@@ -22,6 +22,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const initial = stored ?? "light";
     setTheme(initial);
     document.documentElement.setAttribute("data-theme", initial);
+    if (initial === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
     setMounted(true);
   }, []);
 
@@ -32,6 +37,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const apply = () => {
       setTheme(next);
       document.documentElement.setAttribute("data-theme", next);
+      if (next === "dark") {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
       window.localStorage.setItem("examguard-theme", next);
     };
 
