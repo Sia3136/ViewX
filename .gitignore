@@ -17,3 +17,7 @@ __pycache__/
 backend/outputs/
 backend/outputs/evidence/
 outputs/
+
+# Cloned/Sub-repositories
+2KS/
+DrishtiAI-project/

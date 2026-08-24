@@ -25,6 +25,7 @@ export default function LiveSurveillanceDashboard() {
   const [aiExplanation, setAiExplanation] = useState<string>("");
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string>("");
+  const [toast, setToast] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
   // Time ticker
@@ -36,6 +37,8 @@ export default function LiveSurveillanceDashboard() {
   // Fetch real cameras
   useEffect(() => {
     let mounted = true;
+    let retryCount = 0;
+    
     const fetchCameras = async () => {
       try {
         const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/monitoring`;
@@ -52,9 +55,17 @@ export default function LiveSurveillanceDashboard() {
               videoUrl: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/monitoring/${source.id}/stream`
             }));
           setCameras(mappedCameras);
+        } else if (mounted && retryCount < 10) {
+          retryCount++;
+          setTimeout(fetchCameras, 2000);
         }
       } catch (e) {
-        console.error("Failed to fetch cameras", e);
+        if (mounted && retryCount < 10) {
+          retryCount++;
+          setTimeout(fetchCameras, 2000);
+        } else {
+          console.error("Failed to fetch cameras", e);
+        }
       }
     };
     fetchCameras();
@@ -232,6 +243,11 @@ export default function LiveSurveillanceDashboard() {
           </div>
           
           <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {selectedAlert.evidence && (
+               <div style={{ width: '100%', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                 <img src={selectedAlert.evidence} alt="Violation Evidence" style={{ width: '100%', height: 'auto', maxHeight: '400px', objectFit: 'contain', backgroundColor: '#000' }} />
+               </div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', padding: '16px', backgroundColor: 'var(--bg)', borderRadius: '6px', border: '1px solid var(--border)' }}>
               <div>
                 <div style={{ fontSize: '10px', color: 'var(--text-2)', textTransform: 'uppercase', marginBottom: '4px' }}>Student</div>
@@ -263,9 +279,30 @@ export default function LiveSurveillanceDashboard() {
             </div>
           </div>
           
-          <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: '12px', backgroundColor: 'var(--bg)' }}>
-            <button onClick={() => setSelectedAlert(null)} style={{ padding: '8px 16px', backgroundColor: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}>Dismiss</button>
-            <button style={{ padding: '8px 16px', backgroundColor: 'var(--primary)', border: 'none', color: '#fff', borderRadius: '4px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Acknowledge</button>
+          <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg)' }}>
+            <div>
+              {toast && <span style={{ fontSize: '13px', color: '#16a34a', fontWeight: 500 }}>{toast}</span>}
+            </div>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button 
+                onClick={() => {
+                  setToast("Marked as False Alarm!");
+                  setTimeout(() => { setToast(null); setSelectedAlert(null); }, 1000);
+                }} 
+                style={{ padding: '8px 16px', backgroundColor: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
+              >
+                Mark as False Alarm
+              </button>
+              <button 
+                onClick={() => {
+                  setToast("Confirmed Violation!");
+                  setTimeout(() => { setToast(null); setSelectedAlert(null); }, 1000);
+                }}
+                style={{ padding: '8px 16px', backgroundColor: '#ef4444', border: 'none', color: '#fff', borderRadius: '4px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Confirm Violation
+              </button>
+            </div>
           </div>
         </div>
       </div>,
@@ -275,8 +312,8 @@ export default function LiveSurveillanceDashboard() {
 
   return (
     <div style={{ display: 'flex', height: '100%', gap: '16px' }}>
-      {/* LEFT: CCTV Grid (80%) */}
-      <div style={{ flex: 4, display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', paddingRight: '4px' }}>
+      {/* CCTV Grid (100%) */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', paddingRight: '4px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '12px', alignContent: 'start' }}>
           {cameras.length === 0 && (
              <div style={{ color: 'var(--text-2)', padding: '20px' }}>Loading cameras...</div>
@@ -339,55 +376,6 @@ export default function LiveSurveillanceDashboard() {
               </div>
             );
           })}
-        </div>
-      </div>
-
-      {/* RIGHT: Live Alerts Feed (20%) */}
-      <div style={{ 
-        flex: 1, minWidth: '280px', display: 'flex', flexDirection: 'column', 
-        backgroundColor: 'var(--surface-2)', borderRadius: '12px', border: '1px solid var(--border)',
-        overflow: 'hidden'
-      }}>
-        <div style={{ 
-          padding: '16px', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--surface)',
-          display: 'flex', alignItems: 'center', gap: '8px' 
-        }}>
-          <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#ef4444', animation: 'pulse 2s infinite' }} />
-          <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)', margin: 0 }}>Live Alerts</h3>
-        </div>
-        
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {alerts.length === 0 ? (
-            <div style={{ color: 'var(--text-2)', fontSize: '13px', textAlign: 'center', padding: '20px 0' }}>
-              No critical alerts detected yet.
-            </div>
-          ) : (
-            alerts.filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i).map((alert, idx) => (
-              <div 
-                key={`${alert.id}-${idx}`}
-                onClick={() => handleAlertClick(alert)}
-                style={{
-                  backgroundColor: 'var(--surface)', padding: '12px', borderRadius: '8px',
-                  border: '1px solid var(--border)', borderLeft: `3px solid ${alert.severity === 'critical' ? '#dc2626' : '#ea580c'}`,
-                  cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '6px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                }}
-                className="hover:bg-[var(--surface-3)] transition-colors"
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)' }}>
-                    {alert.type.replace(/_/g, ' ')}
-                  </span>
-                  <span style={{ fontSize: '10px', color: 'var(--text-2)', fontFamily: 'monospace' }}>
-                    {alert.timestamp}
-                  </span>
-                </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-2)' }}>
-                  Person - {alert.studentId}
-                </div>
-              </div>
-            ))
-          )}
         </div>
       </div>
 

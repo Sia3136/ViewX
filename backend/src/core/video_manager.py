@@ -169,7 +169,7 @@ class VideoProcessor:
                 students_data = []
                 for tid, tbox in zip(track_ids, track_boxes):
                     x1, y1, x2, y2 = map(int, tbox)
-                    student_str_id = f"source{self.source_id}_student{tid}"
+                    student_str_id = f"student{tid}"
                     
                     best_iou = 0.5
                     best_kpt = None

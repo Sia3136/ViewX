@@ -17,6 +17,7 @@ from src.utils.schemas import BehaviourEvent
 from pathlib import Path
 
 import math
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 SEVERITY = {
     "prohibited_object": "CRITICAL",
@@ -214,16 +215,91 @@ print("Saved", saved)
 
 os.makedirs("outputs/evidence", exist_ok=True)
 
-def save_evidence(frame, box, student_id, behavior_type, ts):
-    x1, y1, x2, y2 = map(int, box)
-    h, w = frame.shape[:2]
-    pad = 20
-    x1, y1 = max(0, x1-pad), max(0, y1-pad)
-    x2, y2 = min(w, x2+pad), min(h, y2+pad)
-    crop = frame[y1:y2, x1:x2]
-    fname = f"outputs/evidence/{student_id}_{behavior_type}_{ts:.1f}.jpg"
-    cv2.imwrite(fname, crop)
-    return fname
+# ============================================================
+# ALERT FRAME CAPTURE
+# ============================================================
+
+ALERT_FRAME_DIR = PROJECT_ROOT / "outputs" / "alert_frames"
+ALERT_FRAME_DIR.mkdir(parents=True, exist_ok=True)
+
+# Best confidence observed for each alert during its active window.
+# Key: (student_id, behaviour_type)
+best_alerts = {}
+
+
+def save_alert_frame(frame, student_id, behavior_type,
+                     confidence, timestamp, frame_number):
+    """
+    Save the complete frame that triggered / represents the alert.
+
+    Returns:
+        saved file path as string
+    """
+
+    safe_behavior = str(behavior_type).replace(" ", "_").replace("/", "_")
+
+    filename = (
+        f"student_{student_id}_"
+        f"{safe_behavior}_"
+        f"conf_{confidence:.3f}_"
+        f"frame_{frame_number}_"
+        f"time_{timestamp:.2f}.jpg"
+    )
+
+    path = ALERT_FRAME_DIR / filename
+
+    cv2.imwrite(str(path), frame)
+
+    return str(path)
+
+
+def update_best_alert_frame(frame, student_id, behavior_type,
+                            confidence, timestamp, frame_number):
+    """
+    Keep the highest-confidence frame for an alert.
+
+    If this occurrence has higher confidence than the previously
+    stored frame, replace the previous saved frame.
+    """
+
+    key = (str(student_id), str(behavior_type))
+
+    previous = best_alerts.get(key)
+
+    # First occurrence OR better confidence
+    if previous is None or confidence > previous["confidence"]:
+
+        # Delete previous best frame if it exists
+        if previous is not None:
+            old_path = previous.get("frame_path")
+
+            if old_path and os.path.exists(old_path):
+                try:
+                    os.remove(old_path)
+                except OSError:
+                    pass
+
+        frame_path = save_alert_frame(
+            frame=frame,
+            student_id=student_id,
+            behavior_type=behavior_type,
+            confidence=confidence,
+            timestamp=timestamp,
+            frame_number=frame_number
+        )
+
+        best_alerts[key] = {
+            "student_id": str(student_id),
+            "behavior_type": str(behavior_type),
+            "confidence": float(confidence),
+            "timestamp": float(timestamp),
+            "frame_number": int(frame_number),
+            "frame_path": frame_path,
+        }
+
+        return best_alerts[key]
+
+    return previous
 
 def get_dynamic_threshold(track_id, turn_score):
     """
@@ -381,10 +457,10 @@ invigilator_centers = []
 invigilator_confirm = {}   # track_id → consecutive standing frames
 sitting_confirm = {}       # track_id → consecutive sitting frames
 invigilator_boxes = []
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-VIDEO_PATH = PROJECT_ROOT / "data" / "videos" / "Video1.mkv"
-OUTPUT_PATH = str(PROJECT_ROOT / "outputs" / "day_output.mp4")
+
+VIDEO_PATH = PROJECT_ROOT / "data" / "videos" / "Video3.mkv"
+OUTPUT_PATH = str(PROJECT_ROOT / "outputs" / "day3_output.mp4")
 print("VIDEO_PATH =", VIDEO_PATH)
 print("Exists =", VIDEO_PATH.exists())
 MODEL_NAME = "yolov8s-pose.pt"
@@ -638,15 +714,41 @@ while True:
                     evidence={"object": obj['class_name']}
                 )
                 if alert_manager.create_alert(event):
+                    alert_frame_info = update_best_alert_frame(
+                        frame=annotated_frame.copy(),
+                        student_id=sid,
+                        behavior_type="prohibited_object",
+                        confidence=float(event.confidence),
+                        timestamp=video_timestamp,
+                        frame_number=frame_count
+                    )
+
+                    frame_path = alert_frame_info["frame_path"]
+
                     event_logger.log_event({
-                    "student_id": str(event.student_id),
-                    "behaviour_type": str(event.behaviour_type),
-                    "confidence": float(event.confidence),
-                    "explanation": str(event.explanation),
-                    "timestamp": float(event.timestamp),
-                    "keypoints_snapshot": {}
-})
-                    active_alerts[sid] = f"Prohibited Object | Conf: {int(event.confidence*100)}%"
+                        "student_id": str(event.student_id),
+                        "behaviour_type": str(event.behaviour_type),
+                        "confidence": float(event.confidence),
+                        "explanation": str(event.explanation),
+                        "timestamp": float(event.timestamp),
+                        "frame_number": int(event.frame_number),
+
+                        "alert_frame": frame_path,
+
+                        "best_confidence": float(alert_frame_info["confidence"]),
+                        "best_frame_number": int(alert_frame_info["frame_number"]),
+                        "best_timestamp": float(alert_frame_info["timestamp"]),
+
+                        "object": obj["class_name"],
+
+                        "keypoints_snapshot": {}
+                    })
+
+                    active_alerts[sid] = (
+                f"Prohibited Object | "
+        f"Conf: {int(event.confidence * 100)}%"
+                    )
+
                     alert_cooldown[cooldown_key] = int(fps * 3)
 
     # ========== BEHAVIOUR ALERTS (Siya) ==========
@@ -690,16 +792,35 @@ while True:
                 continue
 
             box = history_list[-1]["box"]
-            path = save_evidence(annotated_frame, box, sid, behavior_type, video_timestamp)
+            # ============================================================
+            # SAVE BEST CONFIDENCE ALERT FRAME
+            # ============================================================
+
+            alert_frame_info = update_best_alert_frame(
+                frame=annotated_frame.copy(),
+                student_id=sid,
+                behavior_type=behavior_type,
+                confidence=float(result["confidence"]),
+                timestamp=video_timestamp,
+                frame_number=frame_count
+            )
+
+            frame_path = alert_frame_info["frame_path"]
+
             event = BehaviourEvent(
                 student_id=str(sid),
                 behaviour_type=behavior_type,
-                confidence=result["confidence"],
+                confidence=float(result["confidence"]),
                 explanation=result["reason"],
                 timestamp=video_timestamp,
                 frame_number=frame_count,
-                evidence={}
-            )
+                evidence={
+                    "alert_frame": frame_path,
+                    "best_confidence": alert_frame_info["confidence"],
+        "best_frame_number": alert_frame_info["frame_number"],
+        "best_timestamp": alert_frame_info["timestamp"],
+    }
+)
             if alert_manager.create_alert(event):
                 event_logger.log_event({
                     "student_id": str(event.student_id),
@@ -707,8 +828,13 @@ while True:
                     "confidence": float(event.confidence),
                     "explanation": str(event.explanation),
                     "timestamp": float(event.timestamp),
+                    "frame_number": int(event.frame_number),
+                    "alert_frame": frame_path,
+                    "best_confidence": float(alert_frame_info["confidence"]),
+                    "best_frame_number": int(alert_frame_info["frame_number"]),
+                    "best_timestamp": float(alert_frame_info["timestamp"]),
                     "keypoints_snapshot": {}
-                })
+})
                 sev = SEVERITY.get(behavior_type, "LOW")
                 name = FRIENDLY.get(behavior_type, behavior_type)
                 active_alerts[sid] = f"[{sev}] {name} | {int(result['confidence'] * 100)}%"
@@ -721,7 +847,7 @@ while True:
 
                 print(
                     f"ALERT t={video_timestamp:.1f}s ID={sid} "
-                    f"type={behavior_type} conf={result['confidence']:.2f} sev={sev} evidence={path}"
+                    f"type={behavior_type} conf={result['confidence']:.2f} sev={sev} evidence={frame_path}"
                 )
 
     # Decrease cooldowns

@@ -41,7 +41,7 @@ class EventLogger:
 
         if not self.csv_path.exists():
             with self.csv_path.open("w", newline="", encoding="utf-8") as f:
-                writer = csv.DictWriter(f, fieldnames=self.CSV_FIELDS)
+                writer = csv.DictWriter(f, fieldnames=self.CSV_FIELDS, extrasaction="ignore")
                 writer.writeheader()
 
     def _sanitize_student_id(self, student_id):
@@ -108,7 +108,7 @@ class EventLogger:
         )
 
         with self.csv_path.open("a", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=self.CSV_FIELDS)
+            writer = csv.DictWriter(f, fieldnames=self.CSV_FIELDS, extrasaction="ignore")
             writer.writerow(row)
 
         return event
