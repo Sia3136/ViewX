@@ -37,7 +37,7 @@ ViewX is an AI-powered real-time surveillance system that makes CCTV smarter by 
 ## 💡 Why Build?
 Traditional CCTV networks are purely reactive: they record thousands of hours of video that is only reviewed *after* an incident, security breach, or academic integrity violation has already occurred. Furthermore, manual invigilation in high-stakes environments like exam halls is prone to human error, cognitive fatigue, and spatial blind spots. 
 
-**ViewX** bridges this gap by turning passive video streams into active, real-time safety networks. By applying edge-based computer vision and intelligent behavioral heuristics, ViewX automatically identifies anomalies, alerts operators, and provides clear, explainable proof of incidents in real-time, drastically reducing reaction times and human workload.
+**ViewX** bridges this gap by turning passive video streams into active, real-time safety networks. By applying edge-based computer vision and behavioral heuristics, ViewX identifies anomalies, alerts operators, and provides clear, explainable proof of incidents in real-time, reducing reaction times and manual workload.
 
 ---
 
@@ -45,8 +45,8 @@ Traditional CCTV networks are purely reactive: they record thousands of hours of
 
 * **Real-time Event Alerts:** Immediate WebSocket-powered popups with cropped evidence snapshots.
 * **Continuous Multi-Student Tracking:** Relies on **ByteTrack** to maintain student identity persistence even across temporal overlaps or partial occlusions.
-* **Novel Dual-Triangle Architecture:** Accurately catches the direction of sight to understand copying cases, without needing expensive specialized hardware (like eye-trackers).
-* **AI Explainability:** Integrated **Groq API** to provide human-readable, intelligent explanations for detected anomalies.
+* **Dual-Triangle Architecture:** Calculates the direction of sight to understand copying cases, without needing specialized hardware (like eye-trackers).
+* **AI Explainability:** Integrated **Groq API** to provide human-readable explanations for detected anomalies.
 * **Robust Edge-Case Handling:**
   * **Invigilator in the room:** Walking or standing invigilators naturally draw student gazes. ViewX automatically identifies invigilator coordinates (using height ratio and movement vectors) and suppresses false student gaze alerts within those spatial sectors.
   * **Invigilator helping student to copy:** Detects suspicious invigilator behavior, such as prolonged proximity or helping behavior at a specific student's desk.
@@ -54,7 +54,7 @@ Traditional CCTV networks are purely reactive: they record thousands of hours of
   * **Non-verbal communication:** Captures quick side-ward glances, sign-based gestures, or repeated nodding patterns.
   * **CCTV malfunction:** Monitors stream health and alerts operators immediately if a camera feed is lost or blacked out.
   * **Phone and chit (object) detection:** Specifically detects unauthorized items (mobile phones, smartwatches, chits/notes) on desks or in hands.
-  * **Noise in camera quality:** Employs dynamic CLAHE (Contrast Limited Adaptive Histogram Equalization) preprocessing to ensure accuracy in dim lighting, glare, or low-resolution camera outputs.
+  * **Noise in camera quality:** Employs CLAHE (Contrast Limited Adaptive Histogram Equalization) preprocessing to improve accuracy in dim lighting, glare, or low-resolution camera outputs.
 
 ---
 
@@ -90,7 +90,7 @@ sequenceDiagram
 
 ## 🏗️ System Architecture
 
-ViewX is structured around a highly decoupled, event-driven architecture designed to minimize latency and ensure fault-tolerant edge operations.
+ViewX is structured around a decoupled, event-driven architecture designed to minimize latency and ensure fault-tolerant edge operations.
 
 ```mermaid
 flowchart TD
@@ -124,12 +124,12 @@ flowchart TD
     Dashboard -->|Control Commands| API
 ```
 
-### 🔺 Novel Dual-Triangle Sight Tracker
-To accurately determine cheating or copying behaviors, ViewX introduces a **Novel Dual-Triangle Architecture** for head and sight vector tracking:
+### 🔺 Dual-Triangle Sight Tracker
+To determine cheating or copying behaviors, ViewX uses a **Dual-Triangle Architecture** for head and sight vector tracking:
 1. **The Eye-Nose Triangle:** Formed by the spatial coordinates of the Nose, Left Eye, and Right Eye.
 2. **The Ear-Nose Triangle:** Formed by the spatial coordinates of the Nose, Left Ear, and Right Ear.
 
-By computing the geometric offsets, aspect ratio, and angular vectors between these two triangles, the heuristics engine establishes a continuous `gaze_direction` score. This mathematical model is scale-invariant and robust against variable camera mounting heights, enabling precise identification of sideward glances, desk-gazing, and unauthorized sheet viewing.
+By computing the geometric offsets, aspect ratio, and angular vectors between these two triangles, the heuristics engine establishes a continuous `gaze_direction` score. This mathematical model is scale-invariant and robust against variable camera mounting heights, enabling the identification of sideward glances, desk-gazing, and unauthorized sheet viewing.
 
 ---
 
@@ -138,17 +138,20 @@ By computing the geometric offsets, aspect ratio, and angular vectors between th
 1. **Dashboard Overview:** Upon logging in, operators see a layout of all active camera channels, live alerts, and a summary dashboard.
 
    *Live Camera with Alerts:*
-   ![Camera with alerts](Black%20Blue%20and%20White%20Modern%20Startup%20Pitch%20Deck%20Presentation%20%281%29.png)
+   
+   ![Camera with alerts](frontend_camera_alerts.png)
 
 2. **Real-Time Notification:** If a student exhibits prolonged sideward gazing or holds a phone, a red alert drawer slides out, highlighting the camera feed, location, student tag, and confidence score.
 
    *Live Alerts Dashboard:*
-   ![Live alerts dashboard](Black%20Blue%20and%20White%20Modern%20Startup%20Pitch%20Deck%20Presentation%20%282%29.png)
+   
+   ![Live alerts dashboard](live_alerts_dashboard.png)
 
 3. **Audit Trails (Student Drawer):** Clicking an alert opens the student's history profile. Invigilators can check historical timestamps and look at the "Evidence Snapshot" saved in the database, complete with AI explainability.
 
    *Alert Complete Info:*
-   ![Complete info of a particular alert](Black%20Blue%20and%20White%20Modern%20Startup%20Pitch%20Deck%20Presentation.png)
+   
+   ![Complete info of a particular alert](alert_complete_info.png)
 
 4. **Configuration Settings:** Invigilators can tune the threshold values (e.g., alert duration, minimum confidence percentage) dynamically to match the exam strictness level.
 
@@ -156,9 +159,9 @@ By computing the geometric offsets, aspect ratio, and angular vectors between th
 
 ## 🔌 Backend Architecture
 The backend is powered by **FastAPI**, written in asynchronous Python 3.10+.
-* **WebSocket Server:** Maintains low-overhead stateful connections to multiple frontend clients.
+* **WebSocket Server:** Maintains stateful connections to frontend clients.
 * **SQLAlchemy & Alembic:** Standard SQL ORM for postgres schema integrity.
-* **Redis Pub/Sub:** Decoupled architecture allowing multiple ML workers to push alert events safely without choking API threads.
+* **Redis Pub/Sub:** Decoupled architecture allowing ML workers to push alert events safely.
 
 ---
 
@@ -166,10 +169,10 @@ The backend is powered by **FastAPI**, written in asynchronous Python 3.10+.
 
 ### 🤖 Why YOLOv8s and NOT YOLOv11?
 We chose **YOLOv8s (Small)** over the newer YOLOv11 version based on critical edge-deployment parameters:
-* **Older & Reliable:** YOLOv8s is a highly matured, stable release with extensive production testing compared to newer variants.
-* **Scalability:** It runs efficiently on mid-range edge accelerators, ensuring high frame-rates without requiring expensive high-end GPUs.
-* **Less Costly:** The compute cost-to-accuracy ratio is highly optimized, allowing institutional users to deploy the surveillance stack on standard hardware.
-* **Strategic Tradeoff:** The minor precision improvement in YOLOv11 did not justify its increased hardware footprint and deployment costs, especially when scaling across multiple concurrent camera feeds on the edge.
+* **Reliability:** YOLOv8s is a matured, stable release with extensive production testing compared to newer variants.
+* **Scalability:** It runs efficiently on mid-range edge accelerators, ensuring high frame-rates.
+* **Cost:** The compute cost-to-accuracy ratio allows institutional users to deploy the surveillance stack on standard hardware.
+* **Tradeoff:** The precision improvement in YOLOv11 did not justify its increased hardware footprint and deployment costs, especially when scaling across multiple concurrent camera feeds on the edge.
 
 ### ⏱️ Latency & Performance
 * **Total Latency per Frame:** **~30ms**
@@ -179,7 +182,7 @@ We chose **YOLOv8s (Small)** over the newer YOLOv11 version based on critical ed
   3. *ByteTrack Association*
   4. *Dual-Triangle Sight direction computation*
   5. *Redis propagation & database logging*
-* With a latency of ~30ms, the system easily achieves a fluid **30+ FPS**, ensuring true real-time threat detection.
+* With a latency of ~30ms, the system achieves **~30+ FPS** for real-time monitoring.
 
 ---
 
@@ -370,7 +373,7 @@ pytest tests/integration/test_day4_false_positives.py
 
 ## 🏆 Hackathon & Sponsorships
 
-We built this for the **Drishti AI Hackathon**, Sponsored by **DEX - IT Global** where we were in the **top 6** for the domain. We are proud to share that our solution demonstrated outstanding scalability, reliable latency, and advanced explainable edge AI architectures.
+We built this for the **Drishti AI Hackathon**, Sponsored by **DEX - IT Global** where we were in the **top 6** for the domain. We are proud to share that our solution demonstrated scalability, low latency, and explainable AI capabilities.
 
 ---
-*Created with ❤️ by the Drishti AI CaseBlitz Team.*
+*Created with ❤️ by Team CaseBlitz.*
