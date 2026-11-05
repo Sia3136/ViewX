@@ -21,3 +21,8 @@ outputs/
 # Cloned/Sub-repositories
 2KS/
 DrishtiAI-project/
+
+# Environment files
+.env
+.env.*
+!.env.example
